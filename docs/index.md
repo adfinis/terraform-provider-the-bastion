@@ -30,7 +30,6 @@ provider "bastion" {
 
 ### Optional
 
-- `password` (String, Sensitive) SSH password
 - `port` (Number) The SSH port to connect to (default: 22)
 - `private_key` (String, Sensitive) SSH private key content
 - `private_key_file` (String) Path to SSH private key file
