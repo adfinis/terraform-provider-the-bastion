@@ -167,14 +167,14 @@ const (
 	EgressStrictHostKeyCheckingBypass   EgressStrictHostKeyCheckingPolicy = "bypass"
 )
 
-// PersonalEgressMFARequiredPolicy represents a the personal egress MFA policies.
-type PersonalEgressMFARequiredPolicy string
+// MFARequiredPolicy represents an MFA policies.
+type MFARequiredPolicy string
 
 const (
-	PersonalEgressMFARequiredPassword PersonalEgressMFARequiredPolicy = "password"
-	PersonalEgressMFARequiredTOTP     PersonalEgressMFARequiredPolicy = "totp"
-	PersonalEgressMFARequiredAny      PersonalEgressMFARequiredPolicy = "any"
-	PersonalEgressMFARequiredNone     PersonalEgressMFARequiredPolicy = "none"
+	MFARequiredPassword MFARequiredPolicy = "password"
+	MFARequiredTOTP     MFARequiredPolicy = "totp"
+	MFARequiredAny      MFARequiredPolicy = "any"
+	MFARequiredNone     MFARequiredPolicy = "none"
 )
 
 // ModifyAccountOptions holds options for modifying a Bastion account.
@@ -184,7 +184,7 @@ type ModifyAccountOptions struct {
 	MFATOTPRequired             *YesNoBypass
 	EgressStrictHostKeyChecking *EgressStrictHostKeyCheckingPolicy
 	EgressSessionMultiplexing   *YesNoDefault
-	PersonalEgressMFARequired   *PersonalEgressMFARequiredPolicy
+	PersonalEgressMFARequired   *MFARequiredPolicy
 	AlwaysActive                *bool
 	IdleIgnore                  *bool
 	MaxInactiveDays             *int

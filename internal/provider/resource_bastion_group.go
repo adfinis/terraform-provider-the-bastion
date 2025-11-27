@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/adfinis/terraform-provider-bastion/bastion"
+	"github.com/adfinis/terraform-provider-bastion/internal/provider/utils"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -33,13 +34,17 @@ type GroupResource struct {
 
 // GroupResourceModel describes the resource data model.
 type GroupResourceModel struct {
-	Group       types.String `tfsdk:"group"`
-	Owner       types.String `tfsdk:"owner"`
-	KeyAlgo     types.String `tfsdk:"key_algo"`
-	Owners      types.List   `tfsdk:"owners"`
-	Members     types.List   `tfsdk:"members"`
-	Gatekeepers types.List   `tfsdk:"gatekeepers"`
-	ACLKeepers  types.List   `tfsdk:"aclkeepers"`
+	Group           types.String `tfsdk:"group"`
+	Owner           types.String `tfsdk:"owner"`
+	KeyAlgo         types.String `tfsdk:"key_algo"`
+	MFARequired     types.String `tfsdk:"mfa_required"`
+	IdleLockTimeout types.String `tfsdk:"idle_lock_timeout"`
+	IdleKillTimeout types.String `tfsdk:"idle_kill_timeout"`
+	GuestTtlLimit   types.String `tfsdk:"guest_ttl_limit"`
+	Owners          types.List   `tfsdk:"owners"`
+	Members         types.List   `tfsdk:"members"`
+	Gatekeepers     types.List   `tfsdk:"gatekeepers"`
+	ACLKeepers      types.List   `tfsdk:"aclkeepers"`
 }
 
 // Metadata returns the resource type name.
@@ -75,6 +80,22 @@ func (r *GroupResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 					stringplanmodifier.RequiresReplace(),
 					stringplanmodifier.UseStateForUnknown(),
 				},
+			},
+			"mfa_required": schema.StringAttribute{
+				MarkdownDescription: "MFA policy for the group. Valid values: password, totp, any, none. If not specified, the group's current setting is preserved.",
+				Optional:            true,
+			},
+			"idle_lock_timeout": schema.StringAttribute{
+				MarkdownDescription: "Idle lock timeout in seconds or duration. After this duration of inactivity, the session will be locked.",
+				Optional:            true,
+			},
+			"idle_kill_timeout": schema.StringAttribute{
+				MarkdownDescription: "Idle kill timeout in seconds or duration. After this duration of inactivity, the session will be terminated.",
+				Optional:            true,
+			},
+			"guest_ttl_limit": schema.StringAttribute{
+				MarkdownDescription: "Maximum TTL (time to live) for guest accesses in seconds or duration.",
+				Optional:            true,
 			},
 			"owners": schema.ListAttribute{
 				ElementType:         types.StringType,
@@ -228,16 +249,72 @@ func (r *GroupResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	}
 	state.ACLKeepers = aclkeepers
 
+	if group.MFARequired != nil {
+		state.MFARequired = types.StringValue(string(*group.MFARequired))
+	}
+
+	if group.IdleLockTimeout != nil {
+		state.IdleLockTimeout = types.StringValue(*group.IdleLockTimeout)
+	}
+
+	if group.IdleKillTimeout != nil {
+		state.IdleKillTimeout = types.StringValue(*group.IdleKillTimeout)
+	}
+
+	if group.GuestTtlLimit != nil {
+		state.GuestTtlLimit = types.StringValue(*group.GuestTtlLimit)
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 // Update updates the resource and sets the updated Terraform state on success.
 func (r *GroupResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan GroupResourceModel
+	var plan, state GroupResourceModel
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Check if any modifiable attributes have changed
+	if !plan.MFARequired.Equal(state.MFARequired) ||
+		!plan.IdleLockTimeout.Equal(state.IdleLockTimeout) ||
+		!plan.IdleKillTimeout.Equal(state.IdleKillTimeout) ||
+		!plan.GuestTtlLimit.Equal(state.GuestTtlLimit) {
+
+		modifyOpts := &bastion.GroupModifyOptions{}
+
+		if !plan.MFARequired.IsNull() {
+			mfaPolicy := bastion.MFARequiredPolicy(plan.MFARequired.ValueString())
+			modifyOpts.MFARequired = &mfaPolicy
+		}
+
+		if !plan.IdleLockTimeout.IsNull() {
+			modifyOpts.IdleLockTimeout = utils.ToPtr(plan.IdleLockTimeout.ValueString())
+		}
+
+		if !plan.IdleKillTimeout.IsNull() {
+			modifyOpts.IdleKillTimeout = utils.ToPtr(plan.IdleKillTimeout.ValueString())
+		}
+
+		if !plan.GuestTtlLimit.IsNull() {
+			modifyOpts.GuestTtlLimit = utils.ToPtr(plan.GuestTtlLimit.ValueString())
+		}
+
+		err := r.client.ModifyGroup(plan.Group.ValueString(), modifyOpts)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error Modifying Bastion Group",
+				fmt.Sprintf("Could not modify group %s: %s", plan.Group.ValueString(), err.Error()),
+			)
+			return
+		}
 	}
 
 	group, err := r.client.GroupInfo(plan.Group.ValueString())
@@ -251,10 +328,6 @@ func (r *GroupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 
 	plan.Group = types.StringValue(group.Group)
 
-	// Handle potentially nil slices from API
-	/* if group.Owners == nil {
-		group.Owners = []string{}
-	} */
 	owners, diags := types.ListValueFrom(ctx, types.StringType, group.Owners)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -262,9 +335,6 @@ func (r *GroupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 	plan.Owners = owners
 
-	/* if group.Members == nil {
-		group.Members = []string{}
-	} */
 	members, diags := types.ListValueFrom(ctx, types.StringType, group.Members)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -272,9 +342,6 @@ func (r *GroupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 	plan.Members = members
 
-	/* if group.Gatekeepers == nil {
-		group.Gatekeepers = []string{}
-	} */
 	gatekeepers, diags := types.ListValueFrom(ctx, types.StringType, group.Gatekeepers)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -282,9 +349,6 @@ func (r *GroupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 	plan.Gatekeepers = gatekeepers
 
-	/* if group.ACLKeepers == nil {
-		group.ACLKeepers = []string{}
-	} */
 	aclkeepers, diags := types.ListValueFrom(ctx, types.StringType, group.ACLKeepers)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {

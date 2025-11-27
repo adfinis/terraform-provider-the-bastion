@@ -10,15 +10,19 @@ import (
 
 // Group represents a Bastion group.
 type Group struct {
-	Group         string         `json:"group"`
-	Inactive      []string       `json:"inactive"`
-	Guests        []string       `json:"guests"`
-	Owners        []string       `json:"owners"`
-	Members       []string       `json:"members"`
-	Gatekeepers   []string       `json:"gatekeepers"`
-	ACLKeepers    []string       `json:"aclkeepers"`
-	GuestAccesses []string       `json:"guest_accesses"`
-	Keys          map[string]Key `json:"keys"`
+	Group           string             `json:"group"`
+	Inactive        []string           `json:"inactive"`
+	Guests          []string           `json:"guests"`
+	Owners          []string           `json:"owners"`
+	Members         []string           `json:"members"`
+	Gatekeepers     []string           `json:"gatekeepers"`
+	ACLKeepers      []string           `json:"aclkeepers"`
+	GuestAccesses   []string           `json:"guest_accesses"`
+	Keys            map[string]Key     `json:"keys"`
+	MFARequired     *MFARequiredPolicy `json:"mfa_required"`
+	IdleLockTimeout *string            `json:"idle_lock_timeout"`
+	IdleKillTimeout *string            `json:"idle_kill_timeout"`
+	GuestTtlLimit   *string            `json:"guest_ttl_limit"`
 }
 
 // GroupInfo returns information about a Bastion group.
@@ -60,6 +64,41 @@ func (c *Client) CreateGroup(name, owner string, keyAlgo KeyAlgo) (*Group, error
 	}
 
 	return &group, nil
+}
+
+// GroupModifyOptions holds options for modifying a Bastion group.
+type GroupModifyOptions struct {
+	MFARequired     *MFARequiredPolicy
+	IdleLockTimeout *string
+	IdleKillTimeout *string
+	GuestTtlLimit   *string
+}
+
+func (g *GroupModifyOptions) toArgs() []string {
+	var args []string
+	if g.MFARequired != nil {
+		args = append(args, "--mfa-required", string(*g.MFARequired))
+	}
+	if g.IdleLockTimeout != nil {
+		args = append(args, "--idle-lock-timeout", *g.IdleLockTimeout)
+	}
+	if g.IdleKillTimeout != nil {
+		args = append(args, "--idle-kill-timeout", *g.IdleKillTimeout)
+	}
+	if g.GuestTtlLimit != nil {
+		args = append(args, "--guest-ttl-limit", *g.GuestTtlLimit)
+	}
+	return args
+}
+
+// ModifyGroup modifies a Bastion group.
+func (c *Client) ModifyGroup(name string, modifyOpts *GroupModifyOptions) error {
+	args := []string{"--group", name}
+	if modifyOpts != nil {
+		args = append(args, modifyOpts.toArgs()...)
+	}
+	_, err := c.executeCommand("groupModify", args...)
+	return err
 }
 
 // DeleteGroup deletes a Bastion group.

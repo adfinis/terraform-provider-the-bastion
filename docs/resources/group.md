@@ -14,9 +14,13 @@ Manages a Bastion group
 
 ```terraform
 resource "bastion_group" "example" {
-  group    = "example-group"
-  owner    = "bastionadmin"
-  key_algo = "ed25519"
+  group             = "example-group"
+  owner             = "bastionadmin"
+  key_algo          = "ed25519"
+  mfa_required      = "totp"
+  idle_lock_timeout = 900
+  idle_kill_timeout = 1800
+  guest_ttl_limit   = 86400
 }
 ```
 
@@ -30,7 +34,11 @@ resource "bastion_group" "example" {
 
 ### Optional
 
+- `guest_ttl_limit` (String) Maximum TTL (time to live) for guest accesses in seconds or duration.
+- `idle_kill_timeout` (String) Idle kill timeout in seconds or duration. After this duration of inactivity, the session will be terminated.
+- `idle_lock_timeout` (String) Idle lock timeout in seconds or duration. After this duration of inactivity, the session will be locked.
 - `key_algo` (String) The SSH key algorithm for the group's initial key. Valid values: ed25519, rsa2048, rsa4096, rsa8192, ecdsa256, ecdsa384, ecdsa521. Defaults to ed25519. This value is only used during creation and cannot be changed afterward.
+- `mfa_required` (String) MFA policy for the group. Valid values: password, totp, any, none. If not specified, the group's current setting is preserved.
 
 ### Read-Only
 
