@@ -135,7 +135,7 @@ func TestAccGroupGatekeeperResource_RequiresReplace(t *testing.T) {
 
 // testAccGroupGatekeeperResourceConfig generates the Terraform configuration for testing.
 func testAccGroupGatekeeperResourceConfig(groupName, groupOwner, accountName string) string {
-	config := providerConfig()
+	config := providerConfig
 	config += fmt.Sprintf(`
 resource "bastion_group" "test" {
   group = %[1]q
@@ -153,7 +153,7 @@ resource "bastion_group_gatekeeper" "test" {
 
 // testAccGroupGatekeeperResourceConfigMultiple generates config with multiple gatekeepers.
 func testAccGroupGatekeeperResourceConfigMultiple(groupName, groupOwner string) string {
-	config := providerConfig()
+	config := providerConfig
 	config += fmt.Sprintf(`
 resource "bastion_group" "test" {
   group = %[1]q
