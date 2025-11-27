@@ -1,2 +1,2 @@
 
-terraform import bastion_group_aclkeeper.example example-group:example-account
+terraform import bastion_group_gatekeeper.example example-group:example-account
