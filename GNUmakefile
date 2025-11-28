@@ -34,4 +34,9 @@ ssh-keys:
 clean: testacc-down
 	@rm -rf ssh-keys/
 
+local-install:
+	go install -v ./...
+	mkdir -p ~/.terraform.d/plugins/registry.terraform.io/adfinis/bastion/0.0.1/linux_amd64
+	mv ~/go/bin/terraform-provider-bastion ~/.terraform.d/plugins/registry.terraform.io/adfinis/bastion/0.0.1/linux_amd64
+
 .PHONY: fmt lint test testacc build install generate testacc
