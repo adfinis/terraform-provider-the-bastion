@@ -204,6 +204,15 @@ func (r *GroupResource) Create(ctx context.Context, req resource.CreateRequest, 
 				"Error Modifying Bastion Group After Creation",
 				fmt.Sprintf("Could not modify group %s: %s", plan.Group.ValueString(), err.Error()),
 			)
+
+			// delete group again, something went wrong
+			delErr := r.client.DeleteGroup(plan.Group.ValueString())
+			if delErr != nil {
+				resp.Diagnostics.AddError(
+					"Error Cleaning Up Bastion Group After Failed Modify",
+					fmt.Sprintf("Could not delete group %s after failed modify: %s", plan.Group.ValueString(), delErr.Error()),
+				)
+			}
 			return
 		}
 	}
@@ -402,32 +411,53 @@ func (r *GroupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		!plan.IdleKillTimeout.Equal(state.IdleKillTimeout) ||
 		!plan.GuestTtlLimit.Equal(state.GuestTtlLimit) {
 
+		mustModify := false
 		modifyOpts := &bastion.GroupModifyOptions{}
 
-		if !plan.MFARequired.IsNull() {
-			mfaPolicy := bastion.MFARequiredPolicy(plan.MFARequired.ValueString())
-			modifyOpts.MFARequired = &mfaPolicy
+		if !plan.MFARequired.Equal(state.MFARequired) {
+			if !plan.MFARequired.IsNull() {
+				mustModify = true
+				mfaPolicy := bastion.MFARequiredPolicy(plan.MFARequired.ValueString())
+				modifyOpts.MFARequired = &mfaPolicy
+			}
 		}
 
-		if !plan.IdleLockTimeout.IsNull() {
-			modifyOpts.IdleLockTimeout = utils.ToPtr(fmt.Sprintf("%d", plan.IdleLockTimeout.ValueInt64()))
+		if !plan.IdleLockTimeout.Equal(state.IdleLockTimeout) {
+			mustModify = true
+			if plan.IdleLockTimeout.IsNull() {
+				modifyOpts.IdleLockTimeout = utils.ToPtr("-1")
+			} else {
+				modifyOpts.IdleLockTimeout = utils.ToPtr(fmt.Sprintf("%d", plan.IdleLockTimeout.ValueInt64()))
+			}
 		}
 
-		if !plan.IdleKillTimeout.IsNull() {
-			modifyOpts.IdleKillTimeout = utils.ToPtr(fmt.Sprintf("%d", plan.IdleKillTimeout.ValueInt64()))
+		if !plan.IdleKillTimeout.Equal(state.IdleKillTimeout) {
+			mustModify = true
+			if plan.IdleKillTimeout.IsNull() {
+				modifyOpts.IdleKillTimeout = utils.ToPtr("-1")
+			} else {
+				modifyOpts.IdleKillTimeout = utils.ToPtr(fmt.Sprintf("%d", plan.IdleKillTimeout.ValueInt64()))
+			}
 		}
 
-		if !plan.GuestTtlLimit.IsNull() {
-			modifyOpts.GuestTtlLimit = utils.ToPtr(fmt.Sprintf("%d", plan.GuestTtlLimit.ValueInt64()))
+		if !plan.GuestTtlLimit.Equal(state.GuestTtlLimit) {
+			mustModify = true
+			if plan.GuestTtlLimit.IsNull() {
+				modifyOpts.GuestTtlLimit = utils.ToPtr("0")
+			} else {
+				modifyOpts.GuestTtlLimit = utils.ToPtr(fmt.Sprintf("%d", plan.GuestTtlLimit.ValueInt64()))
+			}
 		}
 
-		err := r.client.ModifyGroup(plan.Group.ValueString(), modifyOpts)
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Error Modifying Bastion Group",
-				fmt.Sprintf("Could not modify group %s: %s", plan.Group.ValueString(), err.Error()),
-			)
-			return
+		if mustModify {
+			err := r.client.ModifyGroup(plan.Group.ValueString(), modifyOpts)
+			if err != nil {
+				resp.Diagnostics.AddError(
+					"Error Modifying Bastion Group",
+					fmt.Sprintf("Could not modify group %s: %s", plan.Group.ValueString(), err.Error()),
+				)
+				return
+			}
 		}
 	}
 

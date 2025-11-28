@@ -342,6 +342,96 @@ func TestAccGroupResource_MFAPolicy(t *testing.T) {
 	})
 }
 
+func TestAccGroupResource_IdleLockTimeout(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Create with idle_lock_timeout set to 600
+			{
+				Config: testAccGroupResourceConfigWithPartialOptions("testgrp9", "bastionadmin", "", map[string]any{
+					"idle_lock_timeout": 600,
+				}),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_group.test",
+						tfjsonpath.New("group"),
+						knownvalue.StringExact("testgrp9"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_group.test",
+						tfjsonpath.New("idle_lock_timeout"),
+						knownvalue.Int64Exact(600),
+					),
+				},
+			},
+			// Update to different value (1200)
+			{
+				Config: testAccGroupResourceConfigWithPartialOptions("testgrp9", "bastionadmin", "", map[string]any{
+					"idle_lock_timeout": 1200,
+				}),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_group.test",
+						tfjsonpath.New("idle_lock_timeout"),
+						knownvalue.Int64Exact(1200),
+					),
+				},
+			},
+			// Update to 0 (should disable the timeout)
+			{
+				Config: testAccGroupResourceConfigWithPartialOptions("testgrp9", "bastionadmin", "", map[string]any{
+					"idle_lock_timeout": 0,
+				}),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_group.test",
+						tfjsonpath.New("idle_lock_timeout"),
+						knownvalue.Int64Exact(0),
+					),
+				},
+			},
+			// Update to -1 (explicit reset to default/disabled)
+			{
+				Config: testAccGroupResourceConfigWithPartialOptions("testgrp9", "bastionadmin", "", map[string]any{
+					"idle_lock_timeout": -1,
+				}),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_group.test",
+						tfjsonpath.New("idle_lock_timeout"),
+						knownvalue.Int64Exact(-1),
+					),
+				},
+			},
+			// Set back to a positive value
+			{
+				Config: testAccGroupResourceConfigWithPartialOptions("testgrp9", "bastionadmin", "", map[string]any{
+					"idle_lock_timeout": 900,
+				}),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_group.test",
+						tfjsonpath.New("idle_lock_timeout"),
+						knownvalue.Int64Exact(900),
+					),
+				},
+			},
+			// Remove the attribute (should send -1 to API)
+			{
+				Config: testAccGroupResourceConfig("testgrp9", "bastionadmin", ""),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_group.test",
+						tfjsonpath.New("group"),
+						knownvalue.StringExact("testgrp9"),
+					),
+				},
+			},
+		},
+	})
+}
+
 // testAccGroupResourceConfig generates the Terraform configuration for testing.
 func testAccGroupResourceConfig(groupName, owner, keyAlgo string) string { //nolint:unparam
 	config := providerConfig
