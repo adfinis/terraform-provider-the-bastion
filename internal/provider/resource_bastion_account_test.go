@@ -536,6 +536,158 @@ func TestAccAccountResource_ComplexUpdate(t *testing.T) {
 	})
 }
 
+func TestAccAccountResource_ModifyOshOnly(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccAccountResourceConfigWithModifyOptions("testaccount10", true, 0, map[string]any{
+					"osh_only": true,
+				}),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_account.test",
+						tfjsonpath.New("account"),
+						knownvalue.StringExact("testaccount10"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_account.test",
+						tfjsonpath.New("osh_only"),
+						knownvalue.Bool(true),
+					),
+				},
+			},
+			{
+				Config: testAccAccountResourceConfigWithModifyOptions("testaccount10", true, 0, map[string]any{}),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_account.test",
+						tfjsonpath.New("account"),
+						knownvalue.StringExact("testaccount10"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_account.test",
+						tfjsonpath.New("osh_only"),
+						knownvalue.Bool(false),
+					),
+				},
+			},
+		},
+	})
+}
+
+func TestAccAccountResource_MFATOTPRequired(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Step 1: Create account without mfa_totp_required
+			{
+				Config: testAccAccountResourceConfigWithModifyOptions("testaccount11", true, 0, map[string]any{}),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_account.test",
+						tfjsonpath.New("account"),
+						knownvalue.StringExact("testaccount11"),
+					),
+				},
+			},
+			// Step 2: Set mfa_totp_required to "yes"
+			{
+				Config: testAccAccountResourceConfigWithModifyOptions("testaccount11", true, 0, map[string]any{
+					"mfa_totp_required": "yes",
+				}),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_account.test",
+						tfjsonpath.New("account"),
+						knownvalue.StringExact("testaccount11"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_account.test",
+						tfjsonpath.New("mfa_totp_required"),
+						knownvalue.StringExact("yes"),
+					),
+				},
+			},
+			// Step 3: Change mfa_totp_required from "yes" to "no"
+			{
+				Config: testAccAccountResourceConfigWithModifyOptions("testaccount11", true, 0, map[string]any{
+					"mfa_totp_required": "no",
+				}),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_account.test",
+						tfjsonpath.New("account"),
+						knownvalue.StringExact("testaccount11"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_account.test",
+						tfjsonpath.New("mfa_totp_required"),
+						knownvalue.StringExact("no"),
+					),
+				},
+			},
+			// Step 4: Change mfa_totp_required from "no" to "bypass"
+			{
+				Config: testAccAccountResourceConfigWithModifyOptions("testaccount11", true, 0, map[string]any{
+					"mfa_totp_required": "bypass",
+				}),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_account.test",
+						tfjsonpath.New("account"),
+						knownvalue.StringExact("testaccount11"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_account.test",
+						tfjsonpath.New("mfa_totp_required"),
+						knownvalue.StringExact("bypass"),
+					),
+				},
+			},
+			// Step 5: Change mfa_totp_required from "bypass" to "yes"
+			{
+				Config: testAccAccountResourceConfigWithModifyOptions("testaccount11", true, 0, map[string]any{
+					"mfa_totp_required": "yes",
+				}),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_account.test",
+						tfjsonpath.New("account"),
+						knownvalue.StringExact("testaccount11"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_account.test",
+						tfjsonpath.New("mfa_totp_required"),
+						knownvalue.StringExact("yes"),
+					),
+				},
+			},
+			// Step 6: Remove mfa_totp_required (unset the option)
+			{
+				Config: testAccAccountResourceConfigWithModifyOptions("testaccount11", true, 0, map[string]any{}),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_account.test",
+						tfjsonpath.New("account"),
+						knownvalue.StringExact("testaccount11"),
+					),
+				},
+			},
+			// Step 7: ImportState testing
+			{
+				ResourceName:                         "bastion_account.test",
+				ImportStateVerifyIdentifierAttribute: "account",
+				ImportStateId:                        "testaccount11",
+				ImportState:                          true,
+				ImportStateVerify:                    true,
+			},
+		},
+	})
+}
+
 // testAccAccountResourceConfig generates the Terraform configuration for testing with uid_auto.
 func testAccAccountResourceConfig(accountName string, uidAuto bool) string {
 	config := providerConfig

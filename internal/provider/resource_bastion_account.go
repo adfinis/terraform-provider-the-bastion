@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -123,11 +124,13 @@ func (r *AccountResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "Whether the account is always active.",
 				Optional:            true,
 				Computed:            true,
+				Default:             booldefault.StaticBool(false),
 			},
 			"osh_only": schema.BoolAttribute{
 				MarkdownDescription: "Whether the account can only use osh (bastion) commands.",
 				Optional:            true,
 				Computed:            true,
+				Default:             booldefault.StaticBool(false),
 			},
 			"max_inactive_days": schema.Int64Attribute{
 				MarkdownDescription: "Maximum number of days of inactivity before the account is considered inactive.",
@@ -137,6 +140,7 @@ func (r *AccountResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "Whether PAM authentication is bypassed for this account.",
 				Optional:            true,
 				Computed:            true,
+				Default:             booldefault.StaticBool(false),
 			},
 			"mfa_password_required": schema.StringAttribute{
 				MarkdownDescription: "MFA password policy. Valid values: yes, no, bypass.",
@@ -165,6 +169,7 @@ func (r *AccountResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "Whether to ignore idle timeouts for this account.",
 				Optional:            true,
 				Computed:            true,
+				Default:             booldefault.StaticBool(false),
 			},
 			"pubkey_auth_optional": schema.BoolAttribute{
 				MarkdownDescription: "Whether public key authentication is optional for this account.",
