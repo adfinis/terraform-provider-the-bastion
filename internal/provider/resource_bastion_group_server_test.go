@@ -526,6 +526,26 @@ func TestParseImportID(t *testing.T) {
 			input:    "mygroup:[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:2222:admin",
 			expected: []string{"mygroup", "2001:0db8:85a3:0000:0000:8a2e:0370:7334", "2222", "admin"},
 		},
+		{
+			name:     "protocol access without proxy",
+			input:    "mygroup:192.168.1.100:22::sftp",
+			expected: []string{"mygroup", "192.168.1.100", "22", "", "sftp"},
+		},
+		{
+			name:     "protocol access with proxy",
+			input:    "mygroup:192.168.1.100:22::rsync:10.0.0.1:22:proxy_user",
+			expected: []string{"mygroup", "192.168.1.100", "22", "", "rsync", "10.0.0.1", "22", "proxy_user"},
+		},
+		{
+			name:     "IPv6 protocol access without proxy",
+			input:    "mygroup:[2001:db8::1]:22::scpup",
+			expected: []string{"mygroup", "2001:db8::1", "22", "", "scpup"},
+		},
+		{
+			name:     "IPv6 protocol access with IPv6 proxy",
+			input:    "mygroup:[2001:db8::1]:22::scpdown:[fd00::1]:22:proxy_user",
+			expected: []string{"mygroup", "2001:db8::1", "22", "", "scpdown", "fd00::1", "22", "proxy_user"},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -774,6 +794,360 @@ resource "bastion_group_server" "test" {
   force     = true
 }
 `, groupName, ip, port, user, forceKey)
+
+	return config
+}
+
+func TestAccGroupServerResource_ProtocolSFTP(t *testing.T) {
+	err := testutils.CreateGroup("testgrpsrvsftp", "bastionadmin", bastion.ED25519)
+	if err != nil {
+		t.Errorf("Unable to create test group: %s", err)
+	}
+
+	t.Cleanup(func() {
+		err := testutils.DeleteGroup("testgrpsrvsftp")
+		if err != nil {
+			t.Errorf("Unable to delete test group: %s", err)
+		}
+	})
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// First create base access
+			{
+				Config: testAccGroupServerResourceConfig("testgrpsrvsftp", "192.168.1.50", "22", "datauser", "", "", "", ""),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("group"),
+						knownvalue.StringExact("testgrpsrvsftp"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("ip"),
+						knownvalue.StringExact("192.168.1.50"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("user"),
+						knownvalue.StringExact("datauser"),
+					),
+				},
+			},
+			// Then add protocol access
+			{
+				Config: testAccGroupServerResourceConfigWithProtocol("testgrpsrvsftp", "192.168.1.50", "22", "sftp"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("protocol"),
+						knownvalue.StringExact("sftp"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("id"),
+						knownvalue.StringExact("testgrpsrvsftp:192.168.1.50:22::sftp"),
+					),
+				},
+			},
+			// ImportState testing with protocol
+			{
+				ResourceName:            "bastion_group_server.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateId:           "testgrpsrvsftp:192.168.1.50:22::sftp",
+				ImportStateVerifyIgnore: []string{"force"},
+			},
+		},
+	})
+}
+
+func TestAccGroupServerResource_ProtocolSCPUp(t *testing.T) {
+	err := testutils.CreateGroup("testgrpsrvscpup", "bastionadmin", bastion.ED25519)
+	if err != nil {
+		t.Errorf("Unable to create test group: %s", err)
+	}
+
+	t.Cleanup(func() {
+		err := testutils.DeleteGroup("testgrpsrvscpup")
+		if err != nil {
+			t.Errorf("Unable to delete test group: %s", err)
+		}
+	})
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// First create base access
+			{
+				Config: testAccGroupServerResourceConfig("testgrpsrvscpup", "192.168.1.51", "22", "admin", "", "", "", ""),
+			},
+			// Then add protocol access
+			{
+				Config: testAccGroupServerResourceConfigWithProtocol("testgrpsrvscpup", "192.168.1.51", "22", "scpupload"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("protocol"),
+						knownvalue.StringExact("scpupload"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("id"),
+						knownvalue.StringExact("testgrpsrvscpup:192.168.1.51:22::scpupload"),
+					),
+				},
+			},
+		},
+	})
+}
+
+func TestAccGroupServerResource_ProtocolSCPDown(t *testing.T) {
+	err := testutils.CreateGroup("testgrpsrvscpdn", "bastionadmin", bastion.ED25519)
+	if err != nil {
+		t.Errorf("Unable to create test group: %s", err)
+	}
+
+	t.Cleanup(func() {
+		err := testutils.DeleteGroup("testgrpsrvscpdn")
+		if err != nil {
+			t.Errorf("Unable to delete test group: %s", err)
+		}
+	})
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// First create base access
+			{
+				Config: testAccGroupServerResourceConfig("testgrpsrvscpdn", "192.168.1.52", "22", "downloader", "", "", "", ""),
+			},
+			// Then add protocol access
+			{
+				Config: testAccGroupServerResourceConfigWithProtocol("testgrpsrvscpdn", "192.168.1.52", "22", "scpdownload"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("protocol"),
+						knownvalue.StringExact("scpdownload"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("id"),
+						knownvalue.StringExact("testgrpsrvscpdn:192.168.1.52:22::scpdownload"),
+					),
+				},
+			},
+		},
+	})
+}
+
+func TestAccGroupServerResource_ProtocolRsync(t *testing.T) {
+	err := testutils.CreateGroup("testgrpsrvrsync", "bastionadmin", bastion.ED25519)
+	if err != nil {
+		t.Errorf("Unable to create test group: %s", err)
+	}
+
+	t.Cleanup(func() {
+		err := testutils.DeleteGroup("testgrpsrvrsync")
+		if err != nil {
+			t.Errorf("Unable to delete test group: %s", err)
+		}
+	})
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// First create base access
+			{
+				Config: testAccGroupServerResourceConfig("testgrpsrvrsync", "192.168.1.53", "22", "syncuser", "", "", "", ""),
+			},
+			// Then add protocol access
+			{
+				Config: testAccGroupServerResourceConfigWithProtocol("testgrpsrvrsync", "192.168.1.53", "22", "rsync"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("protocol"),
+						knownvalue.StringExact("rsync"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("id"),
+						knownvalue.StringExact("testgrpsrvrsync:192.168.1.53:22::rsync"),
+					),
+				},
+			},
+		},
+	})
+}
+
+func TestAccGroupServerResource_ProtocolWithProxy(t *testing.T) {
+	err := testutils.CreateGroup("testgrpsrvprotopr", "bastionadmin", bastion.ED25519)
+	if err != nil {
+		t.Errorf("Unable to create test group: %s", err)
+	}
+
+	t.Cleanup(func() {
+		err := testutils.DeleteGroup("testgrpsrvprotopr")
+		if err != nil {
+			t.Errorf("Unable to delete test group: %s", err)
+		}
+	})
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// First create base access with proxy
+			{
+				Config: testAccGroupServerResourceConfig("testgrpsrvprotopr", "10.1.0.50", "22", "admin", "", "192.168.1.1", "22", "proxy_user"),
+			},
+			// Then add protocol access with proxy
+			{
+				Config: testAccGroupServerResourceConfigWithProtocolAndProxy("testgrpsrvprotopr", "10.1.0.50", "22", "sftp", "192.168.1.1", "22", "proxy_user"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("protocol"),
+						knownvalue.StringExact("sftp"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("proxy_ip"),
+						knownvalue.StringExact("192.168.1.1"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("id"),
+						knownvalue.StringExact("testgrpsrvprotopr:10.1.0.50:22::sftp:192.168.1.1:22:proxy_user"),
+					),
+				},
+			},
+			// ImportState testing with protocol and proxy
+			{
+				ResourceName:            "bastion_group_server.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateId:           "testgrpsrvprotopr:10.1.0.50:22::sftp:192.168.1.1:22:proxy_user",
+				ImportStateVerifyIgnore: []string{"force"},
+			},
+		},
+	})
+}
+
+func TestAccGroupServerResource_MultipleProtocols(t *testing.T) {
+	err := testutils.CreateGroup("testgrpsrvmultipr", "bastionadmin", bastion.ED25519)
+	if err != nil {
+		t.Errorf("Unable to create test group: %s", err)
+	}
+
+	t.Cleanup(func() {
+		err := testutils.DeleteGroup("testgrpsrvmultipr")
+		if err != nil {
+			t.Errorf("Unable to delete test group: %s", err)
+		}
+	})
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Create multiple protocol accesses
+			{
+				Config: testAccGroupServerResourceConfigMultipleProtocols("testgrpsrvmultipr"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("bastion_group_server.base", "group", "testgrpsrvmultipr"),
+					resource.TestCheckResourceAttr("bastion_group_server.base", "ip", "192.168.1.100"),
+					resource.TestCheckResourceAttr("bastion_group_server.base", "user", "multiuser"),
+					resource.TestCheckResourceAttr("bastion_group_server.sftp", "protocol", "sftp"),
+					resource.TestCheckResourceAttr("bastion_group_server.scpup", "protocol", "scpupload"),
+					resource.TestCheckResourceAttr("bastion_group_server.rsync", "protocol", "rsync"),
+				),
+			},
+		},
+	})
+}
+
+// testAccGroupServerResourceConfigWithProtocol generates config with protocol.
+func testAccGroupServerResourceConfigWithProtocol(groupName, ip, port, protocol string) string { //nolint:unparam
+	config := providerConfig
+	config += fmt.Sprintf(`
+resource "bastion_group_server" "test" {
+  group    = %[1]q
+  ip       = %[2]q
+  port     = %[3]q
+  protocol = %[4]q
+  force    = true
+}
+`, groupName, ip, port, protocol)
+
+	return config
+}
+
+// testAccGroupServerResourceConfigWithProtocolAndProxy generates config with protocol and proxy.
+func testAccGroupServerResourceConfigWithProtocolAndProxy(groupName, ip, port, protocol, proxyIP, proxyPort, proxyUser string) string {
+	config := providerConfig
+	config += fmt.Sprintf(`
+resource "bastion_group_server" "test" {
+  group      = %[1]q
+  ip         = %[2]q
+  port       = %[3]q
+  protocol   = %[4]q
+  proxy_ip   = %[5]q
+  proxy_port = %[6]q
+  proxy_user = %[7]q
+  force      = true
+}
+`, groupName, ip, port, protocol, proxyIP, proxyPort, proxyUser)
+
+	return config
+}
+
+// testAccGroupServerResourceConfigMultipleProtocols generates config with multiple protocol accesses.
+func testAccGroupServerResourceConfigMultipleProtocols(groupName string) string {
+	config := providerConfig
+	config += fmt.Sprintf(`
+resource "bastion_group_server" "base" {
+  group = %[1]q
+  ip    = "192.168.1.100"
+  port  = "22"
+  user  = "multiuser"
+  force = true
+}
+
+resource "bastion_group_server" "sftp" {
+  group    = %[1]q
+  ip       = "192.168.1.100"
+  port     = "22"
+  protocol = "sftp"
+  force    = true
+  depends_on = [bastion_group_server.base]
+}
+
+resource "bastion_group_server" "scpup" {
+  group    = %[1]q
+  ip       = "192.168.1.100"
+  port     = "22"
+  protocol = "scpupload"
+  force    = true
+  depends_on = [bastion_group_server.base]
+}
+
+resource "bastion_group_server" "rsync" {
+  group    = %[1]q
+  ip       = "192.168.1.100"
+  port     = "22"
+  protocol = "rsync"
+  force    = true
+  depends_on = [bastion_group_server.base]
+}
+`, groupName)
 
 	return config
 }

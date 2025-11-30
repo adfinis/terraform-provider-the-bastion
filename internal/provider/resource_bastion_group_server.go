@@ -40,6 +40,7 @@ type GroupServerResourceModel struct {
 	IP            types.String `tfsdk:"ip"`
 	Port          types.String `tfsdk:"port"`
 	User          types.String `tfsdk:"user"`
+	Protocol      types.String `tfsdk:"protocol"`
 	ProxyIP       types.String `tfsdk:"proxy_ip"`
 	ProxyPort     types.String `tfsdk:"proxy_port"`
 	ProxyUser     types.String `tfsdk:"proxy_user"`
@@ -86,8 +87,15 @@ func (r *GroupServerResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"user": schema.StringAttribute{
-				MarkdownDescription: "Username for the access, use '*' to allow ssh access for all users",
-				Required:            true,
+				MarkdownDescription: "Username for the access, use '*' to allow ssh access for all users.",
+				Optional:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"protocol": schema.StringAttribute{
+				MarkdownDescription: "Protocol to grant access for. Valid values are 'sftp', 'scpup', 'scpdown', 'rsync'. When set, 'user' must be empty. A base access must already exist for the server.",
+				Optional:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -183,6 +191,15 @@ func (r *GroupServerResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	// either user or protocol must exist but not both
+	if (plan.User.IsNull() && plan.Protocol.IsNull()) || (!plan.User.IsNull() && !plan.Protocol.IsNull()) {
+		resp.Diagnostics.AddError(
+			"Error Creating Group Server Access",
+			"Either 'user' or 'protocol' must be set, but not both.",
+		)
+		return
+	}
+
 	// Build options
 	options := &bastion.GroupAddServerOptions{
 		Force: config.Force.ValueBool(),
@@ -202,6 +219,10 @@ func (r *GroupServerResource) Create(ctx context.Context, req resource.CreateReq
 
 	if !plan.TTL.IsNull() {
 		options.TTL = strconv.FormatInt(plan.TTL.ValueInt64(), 10)
+	}
+
+	if !plan.Protocol.IsNull() {
+		options.Protocol = plan.Protocol.ValueString()
 	}
 
 	// Handle proxy options
@@ -235,10 +256,17 @@ func (r *GroupServerResource) Create(ctx context.Context, req resource.CreateReq
 	} else {
 		plan.Port = types.StringValue("*")
 	}
-	if server.User != nil {
+
+	// Handle protocols
+	if server.User != nil && strings.HasPrefix(*server.User, "!") {
+		plan.Protocol = types.StringValue(strings.TrimPrefix(*server.User, "!"))
+		plan.User = types.StringNull()
+	} else if server.User != nil {
 		plan.User = types.StringValue(*server.User)
+		plan.Protocol = types.StringNull()
 	} else {
 		plan.User = types.StringValue("*")
+		plan.Protocol = types.StringNull()
 	}
 
 	if server.ProxyIP != nil {
@@ -312,10 +340,18 @@ func (r *GroupServerResource) Read(ctx context.Context, req resource.ReadRequest
 	} else {
 		state.Port = types.StringValue("*")
 	}
-	if found.User != nil {
+
+	// Handle protocol
+	if found.User != nil && strings.HasPrefix(*found.User, "!") {
+		// This is a protocol access
+		state.Protocol = types.StringValue(strings.TrimPrefix(*found.User, "!"))
+		state.User = types.StringNull()
+	} else if found.User != nil {
 		state.User = types.StringValue(*found.User)
+		state.Protocol = types.StringNull()
 	} else {
 		state.User = types.StringValue("*")
+		state.Protocol = types.StringNull()
 	}
 
 	if found.ProxyIP != nil {
@@ -377,6 +413,7 @@ func (r *GroupServerResource) Delete(ctx context.Context, req resource.DeleteReq
 		state.IP.ValueString(),
 		state.Port.ValueString(),
 		state.User.ValueString(),
+		state.Protocol.ValueString(),
 		proxyOpts,
 	)
 	if err != nil {
@@ -390,14 +427,18 @@ func (r *GroupServerResource) Delete(ctx context.Context, req resource.DeleteReq
 
 // ImportState imports the resource state.
 func (r *GroupServerResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	// Expected format: group:ip:port:user or group:ip:port:user:proxy_ip:proxy_port:proxy_user
+	// Expected formats:
+	// - group:ip:port:user
+	// - group:ip:port:user:protocol
+	// - group:ip:port:user:proxy_ip:proxy_port:proxy_user
+	// - group:ip:port:user:protocol:proxy_ip:proxy_port:proxy_user
 	importID := req.ID
 	parts := parseImportID(importID)
 
-	if len(parts) < 4 || len(parts) == 5 || len(parts) == 6 || len(parts) > 7 {
+	if len(parts) < 4 || len(parts) == 6 || len(parts) > 8 {
 		resp.Diagnostics.AddError(
 			"Invalid Import ID",
-			fmt.Sprintf("Expected import ID in the format 'group:ip:port:user' or 'group:ip:port:user:proxy_ip:proxy_port:proxy_user', got: %s", importID),
+			fmt.Sprintf("Expected import ID in the format 'group:ip:port:user', 'group:ip:port:user:protocol', 'group:ip:port:user:proxy_ip:proxy_port:proxy_user', or 'group:ip:port:user:protocol:proxy_ip:proxy_port:proxy_user', got: %s", importID),
 		)
 		return
 	}
@@ -407,10 +448,20 @@ func (r *GroupServerResource) ImportState(ctx context.Context, req resource.Impo
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("port"), parts[2])...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("user"), parts[3])...)
 
-	if len(parts) == 7 {
+	if len(parts) == 5 {
+		// group:ip:port:user:protocol
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("protocol"), parts[4])...)
+	} else if len(parts) == 7 {
+		// group:ip:port:user:proxy_ip:proxy_port:proxy_user
 		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_ip"), parts[4])...)
 		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_port"), parts[5])...)
 		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_user"), parts[6])...)
+	} else if len(parts) == 8 {
+		// group:ip:port:user:protocol:proxy_ip:proxy_port:proxy_user
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("protocol"), parts[4])...)
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_ip"), parts[5])...)
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_port"), parts[6])...)
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_user"), parts[7])...)
 	}
 
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), importID)...)
@@ -431,6 +482,11 @@ func generateServerAccessID(model *GroupServerResourceModel) string {
 		model.Port.ValueString(),
 		model.User.ValueString(),
 	)
+
+	// Add protocol if present
+	if !model.Protocol.IsNull() {
+		id = fmt.Sprintf("%s:%s", id, model.Protocol.ValueString())
+	}
 
 	if !model.ProxyIP.IsNull() {
 		id = fmt.Sprintf("%s:%s:%s:%s",
@@ -500,13 +556,28 @@ func matchesServerAccess(state *GroupServerResourceModel, server *bastion.GroupS
 	}
 
 	// Check user (API returns null for "*")
+	// For protocol accesses, API returns username as "!protocol"
 	stateUser := state.User.ValueString()
+	stateProtocol := ""
+	if !state.Protocol.IsNull() {
+		stateProtocol = state.Protocol.ValueString()
+	}
+
 	serverUser := "*"
 	if server.User != nil {
 		serverUser = *server.User
 	}
-	if stateUser != serverUser {
-		return false
+
+	// If state has a protocol, match against "!protocol" in server user
+	if stateProtocol != "" {
+		expectedUser := "!" + stateProtocol
+		if serverUser != expectedUser {
+			return false
+		}
+	} else {
+		if stateUser != serverUser {
+			return false
+		}
 	}
 
 	// Check proxy settings
