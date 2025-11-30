@@ -111,3 +111,11 @@ func GetGroupKeyFingerprint(groupName string) (string, error) {
 
 	return "", nil
 }
+
+func GrantAccountCommand(account, command string) error {
+	return TestBastionClient.AccountGrantCommand(account, command)
+}
+
+func RevokeAccountCommand(account, command string) error {
+	return TestBastionClient.AccountRevokeCommand(account, command)
+}
