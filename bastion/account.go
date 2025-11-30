@@ -341,3 +341,21 @@ func (c *Client) DeleteAccount(name string) error {
 	}
 	return nil
 }
+
+// AccuntGrantCommand grants a command to a Bastion account.
+func (c *Client) AccountGrantCommand(account, command string) error {
+	_, err := c.executeCommand("accountGrantCommand", "--account", account, "--command", command)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// AccountRevokeCommand revokes a command from a Bastion account.
+func (c *Client) AccountRevokeCommand(account, command string) error {
+	_, err := c.executeCommand("accountRevokeCommand", "--account", account, "--command", command)
+	if err != nil {
+		return err
+	}
+	return nil
+}
