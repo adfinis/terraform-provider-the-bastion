@@ -199,6 +199,7 @@ func (p *BastionProvider) Configure(ctx context.Context, req provider.ConfigureR
 
 	resp.DataSourceData = client
 	resp.ResourceData = client
+	resp.EphemeralResourceData = client
 
 	tflog.Info(ctx, "Configured Bastion client", map[string]any{"success": true})
 }
@@ -207,6 +208,7 @@ func (p *BastionProvider) Resources(ctx context.Context) []func() resource.Resou
 	return []func() resource.Resource{
 		NewAccountResource,
 		NewAccountCommandResource,
+		NewAccountPIVPolicyResource,
 		NewGroupResource,
 		NewGroupOwnerResource,
 		NewGroupGatekeeperResource,
