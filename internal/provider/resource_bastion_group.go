@@ -11,6 +11,7 @@ import (
 
 	"github.com/adfinis/terraform-provider-bastion/bastion"
 	"github.com/adfinis/terraform-provider-bastion/internal/provider/utils"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -18,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -44,6 +46,7 @@ type GroupResourceModel struct {
 	IdleLockTimeout types.Int64  `tfsdk:"idle_lock_timeout"`
 	IdleKillTimeout types.Int64  `tfsdk:"idle_kill_timeout"`
 	GuestTtlLimit   types.Int64  `tfsdk:"guest_ttl_limit"`
+	TryPersonalKeys types.String `tfsdk:"try_personal_keys"`
 	Owners          types.List   `tfsdk:"owners"`
 	Members         types.List   `tfsdk:"members"`
 	Gatekeepers     types.List   `tfsdk:"gatekeepers"`
@@ -96,6 +99,15 @@ func (r *GroupResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 			"guest_ttl_limit": schema.Int64Attribute{
 				MarkdownDescription: "Maximum TTL (time to live) for guest accesses in seconds.",
 				Optional:            true,
+			},
+			"try_personal_keys": schema.StringAttribute{
+				MarkdownDescription: "Whether to try personal keys for group members. Valid values: yes, no. Defaults to no.",
+				Optional:            true,
+				Computed:            true,
+				Default:             stringdefault.StaticString("no"),
+				Validators: []validator.String{
+					stringvalidator.OneOf("yes", "no"),
+				},
 			},
 			"owners": schema.ListAttribute{
 				ElementType:         types.StringType,
@@ -189,6 +201,12 @@ func (r *GroupResource) Create(ctx context.Context, req resource.CreateRequest, 
 
 	if !plan.GuestTtlLimit.IsNull() {
 		modifyOpts.GuestTtlLimit = utils.ToPtr(fmt.Sprintf("%d", plan.GuestTtlLimit.ValueInt64()))
+		needsModify = true
+	}
+
+	if !plan.TryPersonalKeys.IsNull() {
+		tryPersonalKeys := bastion.YesNo(plan.TryPersonalKeys.ValueString())
+		modifyOpts.TryPersonalKeys = &tryPersonalKeys
 		needsModify = true
 	}
 
@@ -301,6 +319,10 @@ func (r *GroupResource) Create(ctx context.Context, req resource.CreateRequest, 
 		plan.GuestTtlLimit = types.Int64Value(guestTtlLimit)
 	}
 
+	if group.TryPersonalKeys != nil {
+		plan.TryPersonalKeys = types.StringValue(string(*group.TryPersonalKeys))
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -398,6 +420,10 @@ func (r *GroupResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		state.GuestTtlLimit = types.Int64Value(guestTtlLimit)
 	}
 
+	if group.TryPersonalKeys != nil {
+		state.TryPersonalKeys = types.StringValue(string(*group.TryPersonalKeys))
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -441,7 +467,8 @@ func (r *GroupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	if !plan.MFARequired.Equal(state.MFARequired) ||
 		!plan.IdleLockTimeout.Equal(state.IdleLockTimeout) ||
 		!plan.IdleKillTimeout.Equal(state.IdleKillTimeout) ||
-		!plan.GuestTtlLimit.Equal(state.GuestTtlLimit) {
+		!plan.GuestTtlLimit.Equal(state.GuestTtlLimit) ||
+		!plan.TryPersonalKeys.Equal(state.TryPersonalKeys) {
 
 		mustModify := false
 		modifyOpts := &bastion.GroupModifyOptions{}
@@ -478,6 +505,14 @@ func (r *GroupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 				modifyOpts.GuestTtlLimit = utils.ToPtr("0")
 			} else {
 				modifyOpts.GuestTtlLimit = utils.ToPtr(fmt.Sprintf("%d", plan.GuestTtlLimit.ValueInt64()))
+			}
+		}
+
+		if !plan.TryPersonalKeys.Equal(state.TryPersonalKeys) {
+			if !plan.TryPersonalKeys.IsNull() {
+				mustModify = true
+				tryPersonalKeys := bastion.YesNo(plan.TryPersonalKeys.ValueString())
+				modifyOpts.TryPersonalKeys = &tryPersonalKeys
 			}
 		}
 

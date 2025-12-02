@@ -9,6 +9,14 @@ import (
 	"strconv"
 )
 
+// YesNo represents a two-state option: yes or no.
+type YesNo string
+
+const (
+	YesNoYes YesNo = "yes"
+	YesNoNo  YesNo = "no"
+)
+
 // YesNoBypass represents a three-state option: yes, no, or bypass.
 type YesNoBypass string
 

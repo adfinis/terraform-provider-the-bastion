@@ -39,6 +39,7 @@ resource "bastion_group" "example" {
 - `idle_lock_timeout` (Number) Idle lock timeout in seconds. After this duration of inactivity, the session will be locked.
 - `key_algo` (String) The SSH key algorithm for the group's initial key. Valid values: ed25519, rsa2048, rsa4096, rsa8192, ecdsa256, ecdsa384, ecdsa521. Defaults to ed25519. This value is only used during creation and cannot be changed afterward.
 - `mfa_required` (String) MFA policy for the group. Valid values: password, totp, any, none. If not specified, the group's current setting is preserved.
+- `try_personal_keys` (String) Whether to try personal keys for group members. Valid values: yes, no. If not specified, .
 
 ### Read-Only
 

@@ -492,6 +492,75 @@ func TestAccGroupResource_OwnershipTransfer(t *testing.T) {
 	})
 }
 
+func TestAccGroupResource_TryPersonalKeys(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Create group with try_personal_keys set to "yes"
+			{
+				Config: testAccGroupResourceConfigWithPartialOptions("testgrp11", "bastionadmin", "", map[string]any{
+					"try_personal_keys": "yes",
+				}),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_group.test",
+						tfjsonpath.New("group"),
+						knownvalue.StringExact("testgrp11"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_group.test",
+						tfjsonpath.New("try_personal_keys"),
+						knownvalue.StringExact("yes"),
+					),
+				},
+			},
+			// Update to "no"
+			{
+				Config: testAccGroupResourceConfigWithPartialOptions("testgrp11", "bastionadmin", "", map[string]any{
+					"try_personal_keys": "no",
+				}),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_group.test",
+						tfjsonpath.New("try_personal_keys"),
+						knownvalue.StringExact("no"),
+					),
+				},
+			},
+			// Update back to "yes"
+			{
+				Config: testAccGroupResourceConfigWithPartialOptions("testgrp11", "bastionadmin", "", map[string]any{
+					"try_personal_keys": "yes",
+				}),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_group.test",
+						tfjsonpath.New("try_personal_keys"),
+						knownvalue.StringExact("yes"),
+					),
+				},
+			},
+			// Remove the attribute
+			{
+				Config: testAccGroupResourceConfig("testgrp11", "bastionadmin", ""),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_group.test",
+						tfjsonpath.New("group"),
+						knownvalue.StringExact("testgrp11"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_group.test",
+						tfjsonpath.New("try_personal_keys"),
+						knownvalue.StringExact("no"),
+					),
+				},
+			},
+		},
+	})
+}
+
 // testAccGroupResourceConfig generates the Terraform configuration for testing.
 func testAccGroupResourceConfig(groupName, owner, keyAlgo string) string { //nolint:unparam
 	config := providerConfig
@@ -567,6 +636,10 @@ resource "bastion_group" "test" {
 
 	if guestTtlLimit, ok := options["guest_ttl_limit"].(int); ok {
 		resourceConfig += fmt.Sprintf("  guest_ttl_limit = %d\n", guestTtlLimit)
+	}
+
+	if tryPersonalKeys, ok := options["try_personal_keys"].(string); ok {
+		resourceConfig += fmt.Sprintf("  try_personal_keys = %q\n", tryPersonalKeys)
 	}
 
 	resourceConfig += "}\n"
