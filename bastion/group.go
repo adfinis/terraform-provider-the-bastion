@@ -23,7 +23,7 @@ type Group struct {
 	IdleLockTimeout *string            `json:"idle_lock_timeout"`
 	IdleKillTimeout *string            `json:"idle_kill_timeout"`
 	GuestTtlLimit   *string            `json:"guest_ttl_limit"`
-	TryPersonalKeys *YesNo             `json:"try_personal_keys"`
+	TryPersonalKeys *BoolFromInt       `json:"try_personal_keys"`
 }
 
 // GroupInfo returns information about a Bastion group.
@@ -73,7 +73,7 @@ type GroupModifyOptions struct {
 	IdleLockTimeout *string
 	IdleKillTimeout *string
 	GuestTtlLimit   *string
-	TryPersonalKeys *YesNo
+	TryPersonalKeys *bool
 }
 
 func (g *GroupModifyOptions) toArgs() []string {
@@ -91,7 +91,11 @@ func (g *GroupModifyOptions) toArgs() []string {
 		args = append(args, "--guest-ttl-limit", *g.GuestTtlLimit)
 	}
 	if g.TryPersonalKeys != nil {
-		args = append(args, "--try-personal-keys", string(*g.TryPersonalKeys))
+		if *g.TryPersonalKeys {
+			args = append(args, "--try-personal-keys", "yes")
+		} else {
+			args = append(args, "--try-personal-keys", "no")
+		}
 	}
 	return args
 }

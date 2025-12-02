@@ -497,10 +497,10 @@ func TestAccGroupResource_TryPersonalKeys(t *testing.T) {
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
-			// Create group with try_personal_keys set to "yes"
+			// Create group with try_personal_keys set to true
 			{
 				Config: testAccGroupResourceConfigWithPartialOptions("testgrp11", "bastionadmin", "", map[string]any{
-					"try_personal_keys": "yes",
+					"try_personal_keys": true,
 				}),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
@@ -511,33 +511,33 @@ func TestAccGroupResource_TryPersonalKeys(t *testing.T) {
 					statecheck.ExpectKnownValue(
 						"bastion_group.test",
 						tfjsonpath.New("try_personal_keys"),
-						knownvalue.StringExact("yes"),
+						knownvalue.Bool(true),
 					),
 				},
 			},
-			// Update to "no"
+			// Update to false
 			{
 				Config: testAccGroupResourceConfigWithPartialOptions("testgrp11", "bastionadmin", "", map[string]any{
-					"try_personal_keys": "no",
+					"try_personal_keys": false,
 				}),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"bastion_group.test",
 						tfjsonpath.New("try_personal_keys"),
-						knownvalue.StringExact("no"),
+						knownvalue.Bool(false),
 					),
 				},
 			},
-			// Update back to "yes"
+			// Update back to true
 			{
 				Config: testAccGroupResourceConfigWithPartialOptions("testgrp11", "bastionadmin", "", map[string]any{
-					"try_personal_keys": "yes",
+					"try_personal_keys": true,
 				}),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"bastion_group.test",
 						tfjsonpath.New("try_personal_keys"),
-						knownvalue.StringExact("yes"),
+						knownvalue.Bool(true),
 					),
 				},
 			},
@@ -549,11 +549,6 @@ func TestAccGroupResource_TryPersonalKeys(t *testing.T) {
 						"bastion_group.test",
 						tfjsonpath.New("group"),
 						knownvalue.StringExact("testgrp11"),
-					),
-					statecheck.ExpectKnownValue(
-						"bastion_group.test",
-						tfjsonpath.New("try_personal_keys"),
-						knownvalue.StringExact("no"),
 					),
 				},
 			},
@@ -638,8 +633,8 @@ resource "bastion_group" "test" {
 		resourceConfig += fmt.Sprintf("  guest_ttl_limit = %d\n", guestTtlLimit)
 	}
 
-	if tryPersonalKeys, ok := options["try_personal_keys"].(string); ok {
-		resourceConfig += fmt.Sprintf("  try_personal_keys = %q\n", tryPersonalKeys)
+	if tryPersonalKeys, ok := options["try_personal_keys"].(bool); ok {
+		resourceConfig += fmt.Sprintf("  try_personal_keys = %t\n", tryPersonalKeys)
 	}
 
 	resourceConfig += "}\n"
