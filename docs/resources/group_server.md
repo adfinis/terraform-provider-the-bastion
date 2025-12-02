@@ -83,7 +83,7 @@ resource "bastion_group_server" "example_rsync" {
 - `force` (Boolean, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Force adding the access even if it cannot be verified
 - `force_key` (String) Force a specific SSH key for the access
 - `force_password` (String) Force a specific password for the access
-- `protocol` (String) Protocol to grant access for. Valid values are 'sftp', 'scpup', 'scpdown', 'rsync'. When set, 'user' must be empty. A base access must already exist for the server.
+- `protocol` (String) Protocol to grant access for. Valid values are 'sftp', 'scpupload', 'scpdownload', 'rsync'. When set, 'user' must be empty. A base access must already exist for the server.
 - `proxy_ip` (String) IP of the proxy server
 - `proxy_port` (String) Port of the proxy server
 - `proxy_user` (String) Username for the proxy server, use '*' to allow all users
@@ -113,9 +113,9 @@ terraform import bastion_group_server.example2 'kryptonians:10.0.0.0/24:*:*'
 
 terraform import bastion_group_server.example3 'kryptonians:[2001:db8::1]:22:kal-el'
 
-terraform import bastion_group_server.example4 'kryptonians:172.16.0.50:22:app:10.0.0.1:22:jor-el'
+terraform import bastion_group_server.example4 'kryptonians:172.16.0.50:22:kal-el:10.0.0.1:22:jor-el'
 
-terraform import bastion_group_server.example5 'kryptonians:[2001:db8::1]:22:admin:[fd00::1]:22:jor-el'
+terraform import bastion_group_server.example5 'kryptonians:[2001:db8::1]:22:kal-el:[fd00::1]:22:jor-el'
 
 terraform import bastion_group_server.example6 'kryptonians:192.168.1.200:22::sftp'
 

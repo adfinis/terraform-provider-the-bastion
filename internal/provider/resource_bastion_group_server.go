@@ -94,7 +94,7 @@ func (r *GroupServerResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"protocol": schema.StringAttribute{
-				MarkdownDescription: "Protocol to grant access for. Valid values are 'sftp', 'scpup', 'scpdown', 'rsync'. When set, 'user' must be empty. A base access must already exist for the server.",
+				MarkdownDescription: "Protocol to grant access for. Valid values are 'sftp', 'scpupload', 'scpdownload', 'rsync'. When set, 'user' must be empty. A base access must already exist for the server.",
 				Optional:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
