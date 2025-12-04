@@ -9,6 +9,79 @@ import (
 	"strconv"
 )
 
+// YesNoBypass represents a three-state option: yes, no, or bypass.
+type YesNoBypass string
+
+const (
+	YesNoBypassYes    YesNoBypass = "yes"
+	YesNoBypassNo     YesNoBypass = "no"
+	YesNoBypassBypass YesNoBypass = "bypass"
+)
+
+// YesNoDefault represents a three-state option: yes, no, or default.
+type YesNoDefault string
+
+const (
+	YesNoDefaultYes     YesNoDefault = "yes"
+	YesNoDefaultNo      YesNoDefault = "no"
+	YesNoDefaultDefault YesNoDefault = "default"
+)
+
+// EgressStrictHostKeyCheckingPolicy represents the egress strict host key checking policies.
+type EgressStrictHostKeyCheckingPolicy string
+
+const (
+	EgressStrictHostKeyCheckingYes      EgressStrictHostKeyCheckingPolicy = "yes"
+	EgressStricHostKeyCheckingAcceptNew EgressStrictHostKeyCheckingPolicy = "accept-new"
+	EgressStrictHostKeyCheckingNo       EgressStrictHostKeyCheckingPolicy = "no"
+	EgressStrictHostKeyCheckingAsk      EgressStrictHostKeyCheckingPolicy = "ask"
+	EgressStrictHostKeyCheckingDefault  EgressStrictHostKeyCheckingPolicy = "default"
+	EgressStrictHostKeyCheckingBypass   EgressStrictHostKeyCheckingPolicy = "bypass"
+)
+
+// MFARequiredPolicy represents an MFA policies.
+type MFARequiredPolicy string
+
+const (
+	MFARequiredPassword MFARequiredPolicy = "password"
+	MFARequiredTOTP     MFARequiredPolicy = "totp"
+	MFARequiredAny      MFARequiredPolicy = "any"
+	MFARequiredNone     MFARequiredPolicy = "none"
+)
+
+// PIVPolicy represents the PIV policy for account ingress keys.
+type PIVPolicy string
+
+const (
+	PIVPolicyDefault PIVPolicy = "default"
+	PIVPolicyEnforce PIVPolicy = "enforce"
+	PIVPolicyNever   PIVPolicy = "never"
+	PIVPolicyGrace   PIVPolicy = "grace"
+)
+
+// BoolFromInt is simple and works like this 1 => true, 0 => false.
+type BoolFromInt bool
+
+func (b *BoolFromInt) UnmarshalJSON(data []byte) error {
+	var intVal int
+	if err := json.Unmarshal(data, &intVal); err == nil {
+		*b = BoolFromInt(intVal != 0)
+		return nil
+	}
+	return fmt.Errorf("cannot unmarshal %s into BoolFromInt", string(data))
+}
+
+func (b BoolFromInt) MarshalJSON() ([]byte, error) {
+	if b {
+		return []byte("1"), nil
+	}
+	return []byte("0"), nil
+}
+
+func (b BoolFromInt) Bool() bool {
+	return bool(b)
+}
+
 // Port is a helper to represent port which can be a string or int.
 type Port struct {
 	Number int
