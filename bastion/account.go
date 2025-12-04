@@ -44,7 +44,9 @@ type LastActivity struct {
 }
 
 type IngressPIVGrace struct {
-	Enabled BoolFromInt `json:"enabled"`
+	Enabled             BoolFromInt `json:"enabled"`
+	ExpirationTimestamp int         `json:"expiration_timestamp"`
+	SecondsRemaining    int         `json:"seconds_remaining"`
 }
 
 // Account represents a Bastion account.
@@ -61,6 +63,7 @@ type Account struct {
 	PersonalEgressMFARequired MFARequiredPolicy   `json:"personal_egress_mfa_required"`
 	CreationInformation       CreationInformation `json:"creation_information"`
 	AllowedCommands           []string            `json:"allowed_commands"`
+	IngressPIVPolicy          PIVPolicy           `json:"ingress_piv_policy"`
 	IngressPIVEnforced        BoolFromInt         `json:"ingress_piv_enforced"`
 	IngressPIVGrace           IngressPIVGrace     `json:"ingress_piv_grace"`
 	CanConnect                BoolFromInt         `json:"can_connect"`
@@ -242,6 +245,16 @@ const (
 	MFARequiredNone     MFARequiredPolicy = "none"
 )
 
+// PIVPolicy represents the PIV policy for account ingress keys.
+type PIVPolicy string
+
+const (
+	PIVPolicyDefault PIVPolicy = "default"
+	PIVPolicyEnforce PIVPolicy = "enforce"
+	PIVPolicyNever   PIVPolicy = "never"
+	PIVPolicyGrace   PIVPolicy = "grace"
+)
+
 // ModifyAccountOptions holds options for modifying a Bastion account.
 type ModifyAccountOptions struct {
 	PamAuthBypass               *bool
@@ -354,6 +367,29 @@ func (c *Client) AccountGrantCommand(account, command string) error {
 // AccountRevokeCommand revokes a command from a Bastion account.
 func (c *Client) AccountRevokeCommand(account, command string) error {
 	_, err := c.executeCommand("accountRevokeCommand", "--account", account, "--command", command)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// AccountSetPIVPolicy sets the PIV policy for an account.
+func (c *Client) AccountSetPIVPolicy(account string, policy PIVPolicy) error {
+	if policy == PIVPolicyGrace {
+		return fmt.Errorf("use AccountSetPIVGrace for grace policy")
+	}
+
+	_, err := c.executeCommand("accountPIV", "--account", account, "--policy", string(policy))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// AccountSetPIVGrace sets the PIV grace policy for an account with a TTL.
+// The ttl parameter is in seconds.
+func (c *Client) AccountSetPIVGrace(account string, ttl int) error {
+	_, err := c.executeCommand("accountPIV", "--account", account, "--policy", "grace", "--ttl", fmt.Sprintf("%d", ttl))
 	if err != nil {
 		return err
 	}
