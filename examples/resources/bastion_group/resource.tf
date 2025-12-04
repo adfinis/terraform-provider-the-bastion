@@ -1,6 +1,6 @@
 
 resource "bastion_group" "example" {
-  group             = "example-group"
+  group             = "kryptonians"
   owner             = "bastionadmin"
   key_algo          = "ed25519"
   mfa_required      = "totp"

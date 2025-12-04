@@ -1,2 +1,2 @@
 #!/bin/bash
-terraform import bastion_account_piv_policy.example example-account
+terraform import bastion_account_piv_policy.example cal-el

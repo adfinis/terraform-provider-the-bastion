@@ -14,7 +14,7 @@ description: |-
 
 ```terraform
 data "bastion_group" "example" {
-  group = "example-group"
+  group = "humans"
 }
 ```
 

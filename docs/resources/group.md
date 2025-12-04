@@ -14,7 +14,7 @@ Manages a Bastion group
 
 ```terraform
 resource "bastion_group" "example" {
-  group             = "example-group"
+  group             = "kryptonians"
   owner             = "bastionadmin"
   key_algo          = "ed25519"
   mfa_required      = "totp"
@@ -54,5 +54,5 @@ Import is supported using the following syntax:
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-terraform import bastion_group.example example-group
+terraform import bastion_group.example kryptonians
 ```

@@ -14,7 +14,7 @@ Manages a Bastion account
 
 ```terraform
 resource "bastion_account" "example" {
-  account           = "example-account"
+  account           = "cal-el"
   uid_auto          = true
   public_key        = file("id_ed25519.pub")
   max_inactive_days = 90
@@ -59,5 +59,5 @@ Import is supported using the following syntax:
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-terraform import bastion_account.example example-account
+terraform import bastion_account.example cal-el
 ```

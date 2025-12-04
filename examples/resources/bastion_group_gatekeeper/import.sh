@@ -1,2 +1,2 @@
 
-terraform import bastion_group_gatekeeper.example example-group:example-account
+terraform import bastion_group_gatekeeper.example kryptonians:kara-zor-el

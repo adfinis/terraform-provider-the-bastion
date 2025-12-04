@@ -14,8 +14,8 @@ Manages a Bastion group gatekeeper membership
 
 ```terraform
 resource "bastion_group_gatekeeper" "example" {
-  group   = "example-group"
-  account = "example-account"
+  group   = "kryptonians"
+  account = "kara-zor-el"
 }
 ```
 
@@ -38,5 +38,5 @@ Import is supported using the following syntax:
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-terraform import bastion_group_gatekeeper.example example-group:example-account
+terraform import bastion_group_gatekeeper.example kryptonians:kara-zor-el
 ```

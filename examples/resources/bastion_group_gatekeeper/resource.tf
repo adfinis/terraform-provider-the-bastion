@@ -1,5 +1,5 @@
 
 resource "bastion_group_gatekeeper" "example" {
-  group   = "example-group"
-  account = "example-account"
+  group   = "kryptonians"
+  account = "kara-zor-el"
 }

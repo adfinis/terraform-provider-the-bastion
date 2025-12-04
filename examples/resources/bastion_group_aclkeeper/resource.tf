@@ -1,5 +1,5 @@
 
 resource "bastion_group_aclkeeper" "example" {
-  group   = "example-group"
-  account = "example-account"
+  group   = "kryptonians"
+  account = "kara-zor-el"
 }

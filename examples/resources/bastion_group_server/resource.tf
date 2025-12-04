@@ -1,33 +1,33 @@
 # basic example
 resource "bastion_group_server" "example" {
-  group = "example-group"
+  group = "kryptonians"
   ip    = "192.168.1.100"
   port  = "22"
-  user  = "ssh-user"
+  user  = "kal-el"
 }
 
 # example with an ssh proxyjump
 resource "bastion_group_server" "example_proxy" {
-  group      = "example-group"
+  group      = "kryptonians"
   ip         = "192.168.1.100"
   port       = "22"
-  user       = "ssh-user"
+  user       = "kal-el"
   proxy_ip   = "10.10.10.10"
   proxy_port = "22"
-  proxy_user = "proxyuser"
+  proxy_user = "jor-el"
 }
 
 # example with protocol access.
 # in order to create a protocol access, a base server access must first exist.
 resource "bastion_group_server" "example_base" {
-  group = "example-group"
+  group = "kryptonians"
   ip    = "192.168.1.200"
   port  = "22"
-  user  = "datauser"
+  user  = "kara-zor-el"
 }
 
 resource "bastion_group_server" "example_sftp" {
-  group      = "example-group"
+  group      = "kryptonians"
   ip         = "192.168.1.200"
   port       = "22"
   protocol   = "sftp"
@@ -35,7 +35,7 @@ resource "bastion_group_server" "example_sftp" {
 }
 
 resource "bastion_group_server" "example_scpupload" {
-  group      = "example-group"
+  group      = "kryptonians"
   ip         = "192.168.1.200"
   port       = "22"
   protocol   = "scpupload"
@@ -43,7 +43,7 @@ resource "bastion_group_server" "example_scpupload" {
 }
 
 resource "bastion_group_server" "example_rsync" {
-  group      = "example-group"
+  group      = "kryptonians"
   ip         = "192.168.1.200"
   port       = "22"
   protocol   = "rsync"

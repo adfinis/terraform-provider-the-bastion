@@ -1,2 +1,2 @@
 
-terraform import bastion_group_owner.example example-group:example-account
+terraform import bastion_group_owner.example kryptonians:jor-el

@@ -1,2 +1,2 @@
 
-terraform import bastion_group.example example-group
+terraform import bastion_group.example kryptonians

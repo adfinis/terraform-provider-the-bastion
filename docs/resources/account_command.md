@@ -14,7 +14,7 @@ Manages a Bastion account command grant
 
 ```terraform
 resource "bastion_account_command" "example" {
-  account = "myuser"
+  account = "cal-el"
   command = "selfAddPersonalAccess"
 }
 ```
@@ -39,5 +39,5 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 
 ```shell
 # Account command grants can be imported using the format: account:command
-terraform import bastion_account_command.example myuser:selfAddPersonalAccess
+terraform import bastion_account_command.example cal-el:selfAddPersonalAccess
 ```

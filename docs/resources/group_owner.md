@@ -14,8 +14,8 @@ Manages a Bastion group owner membership
 
 ```terraform
 resource "bastion_group_owner" "example" {
-  group   = "example-group"
-  account = "example-account"
+  group   = "kryptonians"
+  account = "jor-el"
 }
 ```
 
@@ -38,5 +38,5 @@ Import is supported using the following syntax:
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-terraform import bastion_group_owner.example example-group:example-account
+terraform import bastion_group_owner.example kryptonians:jor-el
 ```

@@ -1,2 +1,2 @@
 
-terraform import bastion_account.example example-account
+terraform import bastion_account.example cal-el

@@ -14,7 +14,7 @@ Manages the PIV (Personal Identity Verification) policy for a Bastion account's 
 
 ```terraform
 resource "bastion_account_piv_policy" "example" {
-  account = "example-account"
+  account = "cal-el"
   policy  = "enforce"
 }
 ```
@@ -38,5 +38,5 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 
 ```shell
 #!/bin/bash
-terraform import bastion_account_piv_policy.example example-account
+terraform import bastion_account_piv_policy.example cal-el
 ```

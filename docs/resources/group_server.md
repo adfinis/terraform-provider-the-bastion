@@ -15,34 +15,34 @@ Manages a Bastion group access
 ```terraform
 # basic example
 resource "bastion_group_server" "example" {
-  group = "example-group"
+  group = "kryptonians"
   ip    = "192.168.1.100"
   port  = "22"
-  user  = "ssh-user"
+  user  = "kal-el"
 }
 
 # example with an ssh proxyjump
 resource "bastion_group_server" "example_proxy" {
-  group      = "example-group"
+  group      = "kryptonians"
   ip         = "192.168.1.100"
   port       = "22"
-  user       = "ssh-user"
+  user       = "kal-el"
   proxy_ip   = "10.10.10.10"
   proxy_port = "22"
-  proxy_user = "proxyuser"
+  proxy_user = "jor-el"
 }
 
 # example with protocol access.
 # in order to create a protocol access, a base server access must first exist.
 resource "bastion_group_server" "example_base" {
-  group = "example-group"
+  group = "kryptonians"
   ip    = "192.168.1.200"
   port  = "22"
-  user  = "datauser"
+  user  = "kara-zor-el"
 }
 
 resource "bastion_group_server" "example_sftp" {
-  group      = "example-group"
+  group      = "kryptonians"
   ip         = "192.168.1.200"
   port       = "22"
   protocol   = "sftp"
@@ -50,7 +50,7 @@ resource "bastion_group_server" "example_sftp" {
 }
 
 resource "bastion_group_server" "example_scpupload" {
-  group      = "example-group"
+  group      = "kryptonians"
   ip         = "192.168.1.200"
   port       = "22"
   protocol   = "scpupload"
@@ -58,7 +58,7 @@ resource "bastion_group_server" "example_scpupload" {
 }
 
 resource "bastion_group_server" "example_rsync" {
-  group      = "example-group"
+  group      = "kryptonians"
   ip         = "192.168.1.200"
   port       = "22"
   protocol   = "rsync"
@@ -107,17 +107,17 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # - group:ip:port:user:proxy_ip:proxy_port:proxy_user
 # - group:ip:port:user:protocol:proxy_ip:proxy_port:proxy_user
 
-terraform import bastion_group_server.example 'example-group:192.168.1.100:22:ssh-user'
+terraform import bastion_group_server.example 'kryptonians:192.168.1.100:22:kal-el'
 
-terraform import bastion_group_server.example2 'example-group:10.0.0.0/24:*:*'
+terraform import bastion_group_server.example2 'kryptonians:10.0.0.0/24:*:*'
 
-terraform import bastion_group_server.example3 'example-group:[2001:db8::1]:22:root'
+terraform import bastion_group_server.example3 'kryptonians:[2001:db8::1]:22:kal-el'
 
-terraform import bastion_group_server.example4 'example-group:172.16.0.50:22:app:10.0.0.1:22:proxy_user'
+terraform import bastion_group_server.example4 'kryptonians:172.16.0.50:22:app:10.0.0.1:22:jor-el'
 
-terraform import bastion_group_server.example5 'example-group:[2001:db8::1]:22:admin:[fd00::1]:22:proxy_user'
+terraform import bastion_group_server.example5 'kryptonians:[2001:db8::1]:22:admin:[fd00::1]:22:jor-el'
 
-terraform import bastion_group_server.example6 'example-group:192.168.1.200:22::sftp'
+terraform import bastion_group_server.example6 'kryptonians:192.168.1.200:22::sftp'
 
-terraform import bastion_group_server.example7 'example-group:10.0.0.50:22::rsync:192.168.1.1:22:proxy_user'
+terraform import bastion_group_server.example7 'kryptonians:10.0.0.50:22::rsync:192.168.1.1:22:jor-el'
 ```

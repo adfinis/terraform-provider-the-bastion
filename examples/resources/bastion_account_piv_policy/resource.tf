@@ -1,4 +1,4 @@
 resource "bastion_account_piv_policy" "example" {
-  account = "example-account"
+  account = "cal-el"
   policy  = "enforce"
 }
