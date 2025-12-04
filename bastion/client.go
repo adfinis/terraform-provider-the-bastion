@@ -19,6 +19,9 @@ var (
 	ErrHostRequired          = errors.New("host is required")
 	ErrInvalidPort           = errors.New("invalid port")
 	ErrUsernameRequired      = errors.New("username is required")
+	ErrProxyMissingHost      = errors.New("proxy host is required")
+	ErrProxyMissingPort      = errors.New("proxy port is required")
+	ErrProxyMissingUser      = errors.New("proxy user is required")
 )
 
 type Config struct {

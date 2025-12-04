@@ -95,3 +95,19 @@ func DeleteGroup(name string) error {
 	}
 	return TestBastionClient.DeleteGroup(name)
 }
+
+func GetGroupKeyFingerprint(groupName string) (string, error) {
+	group, err := TestBastionClient.GroupInfo(groupName)
+	if err != nil {
+		return "", err
+	}
+
+	// get the first available fingerprint
+	for _, key := range group.Keys {
+		if key.Fingerprint != "" {
+			return key.Fingerprint, nil
+		}
+	}
+
+	return "", nil
+}
