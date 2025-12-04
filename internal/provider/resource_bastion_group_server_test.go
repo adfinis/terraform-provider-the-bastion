@@ -538,13 +538,13 @@ func TestParseImportID(t *testing.T) {
 		},
 		{
 			name:     "IPv6 protocol access without proxy",
-			input:    "mygroup:[2001:db8::1]:22::scpup",
-			expected: []string{"mygroup", "2001:db8::1", "22", "", "scpup"},
+			input:    "mygroup:[2001:db8::1]:22::scpupload",
+			expected: []string{"mygroup", "2001:db8::1", "22", "", "scpupload"},
 		},
 		{
 			name:     "IPv6 protocol access with IPv6 proxy",
-			input:    "mygroup:[2001:db8::1]:22::scpdown:[fd00::1]:22:proxy_user",
-			expected: []string{"mygroup", "2001:db8::1", "22", "", "scpdown", "fd00::1", "22", "proxy_user"},
+			input:    "mygroup:[2001:db8::1]:22::scpdownload:[fd00::1]:22:proxy_user",
+			expected: []string{"mygroup", "2001:db8::1", "22", "", "scpdownload", "fd00::1", "22", "proxy_user"},
 		},
 	}
 
