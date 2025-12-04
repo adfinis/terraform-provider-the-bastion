@@ -360,6 +360,15 @@ func (r *AccountResource) Create(ctx context.Context, req resource.CreateRequest
 				"Error Modifying Account After Creation",
 				fmt.Sprintf("Could not modify account %s: %s", plan.Account.ValueString(), err.Error()),
 			)
+
+			// delete the account to avoid orphaned resources
+			delErr := r.client.DeleteAccount(plan.Account.ValueString())
+			if delErr != nil {
+				resp.Diagnostics.AddError(
+					"Error Cleaning Up After Failed Account Modify",
+					fmt.Sprintf("Could not delete account %s after failed modify: %s", plan.Account.ValueString(), delErr.Error()),
+				)
+			}
 			return
 		}
 	}
