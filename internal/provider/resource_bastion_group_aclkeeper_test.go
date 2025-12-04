@@ -135,7 +135,7 @@ func TestAccGroupACLKeeperResource_RequiresReplace(t *testing.T) {
 
 // testAccGroupACLKeeperResourceConfig generates the Terraform configuration for testing.
 func testAccGroupACLKeeperResourceConfig(groupName, groupOwner, accountName string) string {
-	config := providerConfig()
+	config := providerConfig
 	config += fmt.Sprintf(`
 resource "bastion_group" "test" {
   group = %[1]q
@@ -153,7 +153,7 @@ resource "bastion_group_aclkeeper" "test" {
 
 // testAccGroupACLKeeperResourceConfigMultiple generates config with multiple ACL keepers.
 func testAccGroupACLKeeperResourceConfigMultiple(groupName, groupOwner string) string {
-	config := providerConfig()
+	config := providerConfig
 	config += fmt.Sprintf(`
 resource "bastion_group" "test" {
   group = %[1]q

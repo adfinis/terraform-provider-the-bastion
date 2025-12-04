@@ -37,7 +37,7 @@ func TestAccGroupDataSource(t *testing.T) {
 }
 
 func testAccGroupDataSourceConfig(groupName, owner string) string {
-	return providerConfig() + fmt.Sprintf(`
+	return providerConfig + fmt.Sprintf(`
 resource "bastion_group" "test" {
   group = %[1]q
   owner = %[2]q

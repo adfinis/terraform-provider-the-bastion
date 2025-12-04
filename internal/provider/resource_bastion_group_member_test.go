@@ -135,7 +135,7 @@ func TestAccGroupMemberResource_RequiresReplace(t *testing.T) {
 
 // testAccGroupMemberResourceConfig generates the Terraform configuration for testing.
 func testAccGroupMemberResourceConfig(groupName, groupOwner, accountName string) string {
-	config := providerConfig()
+	config := providerConfig
 	config += fmt.Sprintf(`
 resource "bastion_group" "test" {
   group = %[1]q
@@ -153,7 +153,7 @@ resource "bastion_group_member" "test" {
 
 // testAccGroupMemberResourceConfigMultiple generates config with multiple members.
 func testAccGroupMemberResourceConfigMultiple(groupName, groupOwner string) string {
-	config := providerConfig()
+	config := providerConfig
 	config += fmt.Sprintf(`
 resource "bastion_group" "test" {
   group = %[1]q

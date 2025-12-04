@@ -344,7 +344,7 @@ func TestAccGroupResource_MFAPolicy(t *testing.T) {
 
 // testAccGroupResourceConfig generates the Terraform configuration for testing.
 func testAccGroupResourceConfig(groupName, owner, keyAlgo string) string { //nolint:unparam
-	config := providerConfig()
+	config := providerConfig
 
 	if keyAlgo != "" {
 		config += fmt.Sprintf(`
@@ -368,7 +368,7 @@ resource "bastion_group" "test" {
 
 // testAccGroupResourceConfigWithModifyOptions generates config with all modify options.
 func testAccGroupResourceConfigWithModifyOptions(groupName, owner, keyAlgo, mfaRequired string, idleLockTimeout, idleKillTimeout, guestTtlLimit int) string {
-	config := providerConfig()
+	config := providerConfig
 
 	keyAlgoStr := ""
 	if keyAlgo != "" {
@@ -391,7 +391,7 @@ resource "bastion_group" "test" {
 
 // testAccGroupResourceConfigWithPartialOptions generates config with selected modify options.
 func testAccGroupResourceConfigWithPartialOptions(groupName, owner, keyAlgo string, options map[string]any) string { //nolint:unparam
-	config := providerConfig()
+	config := providerConfig
 
 	resourceConfig := fmt.Sprintf(`
 resource "bastion_group" "test" {
