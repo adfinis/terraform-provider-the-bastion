@@ -159,6 +159,42 @@ func (r *GroupResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
+	// Apply modify-only options if specified
+	modifyOpts := &bastion.GroupModifyOptions{}
+	needsModify := false
+
+	if !plan.MFARequired.IsNull() {
+		mfaPolicy := bastion.MFARequiredPolicy(plan.MFARequired.ValueString())
+		modifyOpts.MFARequired = &mfaPolicy
+		needsModify = true
+	}
+
+	if !plan.IdleLockTimeout.IsNull() {
+		modifyOpts.IdleLockTimeout = utils.ToPtr(fmt.Sprintf("%d", plan.IdleLockTimeout.ValueInt64()))
+		needsModify = true
+	}
+
+	if !plan.IdleKillTimeout.IsNull() {
+		modifyOpts.IdleKillTimeout = utils.ToPtr(fmt.Sprintf("%d", plan.IdleKillTimeout.ValueInt64()))
+		needsModify = true
+	}
+
+	if !plan.GuestTtlLimit.IsNull() {
+		modifyOpts.GuestTtlLimit = utils.ToPtr(fmt.Sprintf("%d", plan.GuestTtlLimit.ValueInt64()))
+		needsModify = true
+	}
+
+	if needsModify {
+		err := r.client.ModifyGroup(plan.Group.ValueString(), modifyOpts)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error Modifying Bastion Group After Creation",
+				fmt.Sprintf("Could not modify group %s: %s", plan.Group.ValueString(), err.Error()),
+			)
+			return
+		}
+	}
+
 	// because the createGroup call doesn't return the same data structure as groupInfo, we need to call groupInfo to get the full data
 	group, err := r.client.GroupInfo(plan.Group.ValueString())
 	if err != nil {
@@ -198,6 +234,46 @@ func (r *GroupResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 	plan.ACLKeepers = aclkeepers
+
+	if group.MFARequired != nil {
+		plan.MFARequired = types.StringValue(string(*group.MFARequired))
+	}
+
+	if group.IdleLockTimeout != nil {
+		idleLockTimeout, err := strconv.ParseInt(*group.IdleLockTimeout, 10, 64)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error Parsing Idle Lock Timeout",
+				fmt.Sprintf("Could not parse idle lock timeout for group %s: %s", plan.Group.ValueString(), err.Error()),
+			)
+			return
+		}
+		plan.IdleLockTimeout = types.Int64Value(idleLockTimeout)
+	}
+
+	if group.IdleKillTimeout != nil {
+		idleKillTimeout, err := strconv.ParseInt(*group.IdleKillTimeout, 10, 64)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error Parsing Idle Kill Timeout",
+				fmt.Sprintf("Could not parse idle kill timeout for group %s: %s", plan.Group.ValueString(), err.Error()),
+			)
+			return
+		}
+		plan.IdleKillTimeout = types.Int64Value(idleKillTimeout)
+	}
+
+	if group.GuestTtlLimit != nil {
+		guestTtlLimit, err := strconv.ParseInt(*group.GuestTtlLimit, 10, 64)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error Parsing Guest TTL Limit",
+				fmt.Sprintf("Could not parse guest TTL limit for group %s: %s", plan.Group.ValueString(), err.Error()),
+			)
+			return
+		}
+		plan.GuestTtlLimit = types.Int64Value(guestTtlLimit)
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
