@@ -1,13 +1,10 @@
 # Terraform Provider The Bastion
 
-> [!WARNING]
-> 🚧 WORK IN PROGRESS 🚧
-
 This provider can be used to managed various resource on [The Bastion](https://github.com/ovh/the-bastion)
 
 ## Requirements
 
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.0
+- [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.10
 - [Go](https://golang.org/doc/install) >= 1.24
 
 ## Building The Provider
@@ -22,7 +19,7 @@ go install
 
 ## Using the provider
 
-> TODO
+The provider documentation can be found [here](https://registry.terraform.io/providers/adfinis/bastion).
 
 ## Developing the Provider
 
