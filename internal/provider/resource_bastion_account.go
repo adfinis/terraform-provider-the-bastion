@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/adfinis/terraform-provider-bastion/bastion"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -18,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -148,26 +150,41 @@ func (r *AccountResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("no"),
+				Validators: []validator.String{
+					stringvalidator.OneOf("yes", "no", "bypass"),
+				},
 			},
 			"mfa_totp_required": schema.StringAttribute{
 				MarkdownDescription: "MFA TOTP policy. Valid values: yes, no, bypass.",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("no"),
+				Validators: []validator.String{
+					stringvalidator.OneOf("yes", "no", "bypass"),
+				},
 			},
 			"egress_strict_host_key_checking": schema.StringAttribute{
 				MarkdownDescription: "Egress strict host key checking policy. Valid values: yes, accept-new, no, ask, default, bypass.",
 				Optional:            true,
+				Validators: []validator.String{
+					stringvalidator.OneOf("yes", "accept-new", "no", "ask", "default", "bypass"),
+				},
 			},
 			"egress_session_multiplexing": schema.StringAttribute{
 				MarkdownDescription: "Egress session multiplexing policy. Valid values: yes, no, default.",
 				Optional:            true,
+				Validators: []validator.String{
+					stringvalidator.OneOf("yes", "no", "default"),
+				},
 			},
 			"personal_egress_mfa_required": schema.StringAttribute{
 				MarkdownDescription: "Personal egress MFA policy. Valid values: password, totp, any, none.",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("none"),
+				Validators: []validator.String{
+					stringvalidator.OneOf("password", "totp", "any", "none"),
+				},
 			},
 			"idle_ignore": schema.BoolAttribute{
 				MarkdownDescription: "Whether to ignore idle timeouts for this account.",

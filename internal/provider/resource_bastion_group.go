@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -46,7 +47,7 @@ type GroupResourceModel struct {
 	IdleLockTimeout types.Int64  `tfsdk:"idle_lock_timeout"`
 	IdleKillTimeout types.Int64  `tfsdk:"idle_kill_timeout"`
 	GuestTtlLimit   types.Int64  `tfsdk:"guest_ttl_limit"`
-	TryPersonalKeys types.String `tfsdk:"try_personal_keys"`
+	TryPersonalKeys types.Bool   `tfsdk:"try_personal_keys"`
 	Owners          types.List   `tfsdk:"owners"`
 	Members         types.List   `tfsdk:"members"`
 	Gatekeepers     types.List   `tfsdk:"gatekeepers"`
@@ -83,10 +84,16 @@ func (r *GroupResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 					stringplanmodifier.RequiresReplace(),
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Validators: []validator.String{
+					stringvalidator.OneOf("ed25519", "rsa2048", "rsa4096", "rsa8192", "ecdsa256", "ecdsa384", "ecdsa521"),
+				},
 			},
 			"mfa_required": schema.StringAttribute{
 				MarkdownDescription: "MFA policy for the group. Valid values: password, totp, any, none. If not specified, the group's current setting is preserved.",
 				Optional:            true,
+				Validators: []validator.String{
+					stringvalidator.OneOf("totp", "any", "none", "password"),
+				},
 			},
 			"idle_lock_timeout": schema.Int64Attribute{
 				MarkdownDescription: "Idle lock timeout in seconds. After this duration of inactivity, the session will be locked.",
@@ -100,14 +107,11 @@ func (r *GroupResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 				MarkdownDescription: "Maximum TTL (time to live) for guest accesses in seconds.",
 				Optional:            true,
 			},
-			"try_personal_keys": schema.StringAttribute{
-				MarkdownDescription: "Whether to try personal keys for group members. Valid values: yes, no. Defaults to no.",
+			"try_personal_keys": schema.BoolAttribute{
+				MarkdownDescription: "Whether to try personal ssh keys for group accesses. Defaults to false.",
 				Optional:            true,
 				Computed:            true,
-				Default:             stringdefault.StaticString("no"),
-				Validators: []validator.String{
-					stringvalidator.OneOf("yes", "no"),
-				},
+				Default:             booldefault.StaticBool(false),
 			},
 			"owners": schema.ListAttribute{
 				ElementType:         types.StringType,
@@ -205,8 +209,7 @@ func (r *GroupResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	if !plan.TryPersonalKeys.IsNull() {
-		tryPersonalKeys := bastion.YesNo(plan.TryPersonalKeys.ValueString())
-		modifyOpts.TryPersonalKeys = &tryPersonalKeys
+		modifyOpts.TryPersonalKeys = utils.ToPtr(plan.TryPersonalKeys.ValueBool())
 		needsModify = true
 	}
 
@@ -320,7 +323,7 @@ func (r *GroupResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	if group.TryPersonalKeys != nil {
-		plan.TryPersonalKeys = types.StringValue(string(*group.TryPersonalKeys))
+		plan.TryPersonalKeys = types.BoolValue(group.TryPersonalKeys.Bool())
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -421,7 +424,7 @@ func (r *GroupResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	}
 
 	if group.TryPersonalKeys != nil {
-		state.TryPersonalKeys = types.StringValue(string(*group.TryPersonalKeys))
+		state.TryPersonalKeys = types.BoolValue(group.TryPersonalKeys.Bool())
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
@@ -511,8 +514,7 @@ func (r *GroupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		if !plan.TryPersonalKeys.Equal(state.TryPersonalKeys) {
 			if !plan.TryPersonalKeys.IsNull() {
 				mustModify = true
-				tryPersonalKeys := bastion.YesNo(plan.TryPersonalKeys.ValueString())
-				modifyOpts.TryPersonalKeys = &tryPersonalKeys
+				modifyOpts.TryPersonalKeys = utils.ToPtr(plan.TryPersonalKeys.ValueBool())
 			}
 		}
 
