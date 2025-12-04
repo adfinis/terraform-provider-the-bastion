@@ -4,6 +4,6 @@
 ---
 services:
   bastion:
-    image: ovhcom/the-bastion:sandbox
+    image: ghcr.io/adfinis-forks/the-bastion:sandbox
     ports:
       - "2222:22"

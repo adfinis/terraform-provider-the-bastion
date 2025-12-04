@@ -205,6 +205,7 @@ func (p *BastionProvider) Configure(ctx context.Context, req provider.ConfigureR
 
 func (p *BastionProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		NewAccountResource,
 		NewGroupResource,
 		NewGroupOwnerResource,
 		NewGroupGatekeeperResource,

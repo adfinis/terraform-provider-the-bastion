@@ -4,28 +4,20 @@
 package testutils
 
 import (
-	"os"
+	_ "embed"
 
 	"github.com/adfinis/terraform-provider-bastion/bastion"
 )
 
 var (
 	TestBastionClient *bastion.Client
-	SSHPrivateKey     []byte
-	SSHPublicKey      []byte
+	//go:embed testdata/ssh-keys/id_ed25519
+	SSHPrivateKey []byte
+	//go:embed testdata/ssh-keys/id_ed25519.pub
+	SSHPublicKey []byte
 )
 
 func init() {
-	var err error
-	SSHPrivateKey, err = os.ReadFile("../../ssh-keys/id_ed25519")
-	if err != nil {
-		panic("failed to read SSH private key: " + err.Error())
-	}
-	SSHPublicKey, err = os.ReadFile("../../ssh-keys/id_ed25519.pub")
-	if err != nil {
-		panic("failed to read SSH public key: " + err.Error())
-	}
-
 	client, err := bastion.New(&bastion.Config{
 		Host:                  "localhost",
 		Port:                  2222,

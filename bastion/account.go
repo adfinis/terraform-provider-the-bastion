@@ -6,13 +6,78 @@ package bastion
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 )
+
+// BoolFromInt is simple and works like this 1 => true, 0 => false.
+type BoolFromInt bool
+
+func (b *BoolFromInt) UnmarshalJSON(data []byte) error {
+	var intVal int
+	if err := json.Unmarshal(data, &intVal); err == nil {
+		*b = BoolFromInt(intVal != 0)
+		return nil
+	}
+	return fmt.Errorf("cannot unmarshal %s into BoolFromInt", string(data))
+}
+
+func (b BoolFromInt) MarshalJSON() ([]byte, error) {
+	if b {
+		return []byte("1"), nil
+	}
+	return []byte("0"), nil
+}
+
+func (b BoolFromInt) Bool() bool {
+	return bool(b)
+}
+
+type CreationInformation struct {
+	Timestamp      int    `json:"timestamp"`
+	Comment        string `json:"comment"`
+	By             string `json:"by"`
+	BastionVersion string `json:"bastion_version"`
+}
+
+type LastActivity struct {
+	Timestamp int    `json:"timestamp"`
+	Ago       string `json:"ago"`
+}
+
+type IngressPIVGrace struct {
+	Enabled BoolFromInt `json:"enabled"`
+}
 
 // Account represents a Bastion account.
 type Account struct {
-	// Account is the name of the account.
-	Account string `json:"account"`
+	Account                   string              `json:"account"`
+	MFATOTPBypass             BoolFromInt         `json:"mfa_totp_bypass"`
+	MFATOTPRequired           BoolFromInt         `json:"mfa_totp_required"`
+	MFATOTPConfigured         BoolFromInt         `json:"mfa_totp_configured"`
+	MFAPasswordBypass         BoolFromInt         `json:"mfa_password_bypass"`
+	MFAPasswordRequired       BoolFromInt         `json:"mfa_password_required"`
+	MFAPasswordConfigured     BoolFromInt         `json:"mfa_password_configured"`
+	GlobalIngressPolicy       BoolFromInt         `json:"global_ingress_policy"`
+	IsExpired                 BoolFromInt         `json:"is_expired"`
+	PersonalEgressMFARequired MFARequiredPolicy   `json:"personal_egress_mfa_required"`
+	CreationInformation       CreationInformation `json:"creation_information"`
+	AllowedCommands           []string            `json:"allowed_commands"`
+	IngressPIVEnforced        BoolFromInt         `json:"ingress_piv_enforced"`
+	IngressPIVGrace           IngressPIVGrace     `json:"ingress_piv_grace"`
+	CanConnect                BoolFromInt         `json:"can_connect"`
+	AlreadySeenBefore         BoolFromInt         `json:"already_seen_before"`
+	IsActive                  BoolFromInt         `json:"is_active"`
+	AlwaysActive              BoolFromInt         `json:"always_active"`
+	MaxInactiveDays           string              `json:"max_inactive_days"`
+	IsFrozen                  BoolFromInt         `json:"is_frozen"`
+	OshOnly                   BoolFromInt         `json:"osh_only"`
+	IsAdmin                   BoolFromInt         `json:"is_admin"`
+	IsSuperOwner              BoolFromInt         `json:"is_super_owner"`
+	IsAuditor                 BoolFromInt         `json:"is_auditor"`
+	IsTTLSet                  BoolFromInt         `json:"is_ttl_set"`
+	IsTTLExpired              BoolFromInt         `json:"is_ttl_expired"`
+	TTTLTimestamp             int                 `json:"ttl_timestamp"`
+	IdleIgnore                BoolFromInt         `json:"idle_ignore"`
+	PamAuthBypass             BoolFromInt         `json:"pam_auth_bypass"`
 }
 
 func (c *Client) AccountInfo(name string) (*Account, error) {
@@ -66,7 +131,7 @@ type CreateAccountOptions struct {
 	Comment         string
 	PublicKey       string
 	NoKey           bool
-	TTL             time.Duration
+	TTL             int
 }
 
 func (c *CreateAccountOptions) validate() error {
@@ -101,7 +166,7 @@ func (c *CreateAccountOptions) toArgs() []string {
 		args = append(args, "--no-key")
 	}
 	if c.TTL != 0 {
-		args = append(args, "--ttl", fmt.Sprintf("%ds", int(c.TTL.Seconds())))
+		args = append(args, "--ttl", fmt.Sprintf("%ds", c.TTL))
 	}
 
 	return args
@@ -202,19 +267,19 @@ func (c *ModifyAccountOptions) toArgs() []string {
 			args = append(args, "--pam-auth-bypass", "no")
 		}
 	}
-	if c.MFAPasswordRequired != nil {
+	if c.MFAPasswordRequired != nil && *c.MFAPasswordRequired != "" {
 		args = append(args, "--mfa-password-required", string(*c.MFAPasswordRequired))
 	}
-	if c.MFATOTPRequired != nil {
+	if c.MFATOTPRequired != nil && *c.MFATOTPRequired != "" {
 		args = append(args, "--mfa-totp-required", string(*c.MFATOTPRequired))
 	}
-	if c.EgressStrictHostKeyChecking != nil {
+	if c.EgressStrictHostKeyChecking != nil && *c.EgressStrictHostKeyChecking != "" {
 		args = append(args, "--egress-strict-host-key-checking", string(*c.EgressStrictHostKeyChecking))
 	}
-	if c.EgressSessionMultiplexing != nil {
+	if c.EgressSessionMultiplexing != nil && *c.EgressSessionMultiplexing != "" {
 		args = append(args, "--egress-session-multiplexing", string(*c.EgressSessionMultiplexing))
 	}
-	if c.PersonalEgressMFARequired != nil {
+	if c.PersonalEgressMFARequired != nil && *c.PersonalEgressMFARequired != "" {
 		args = append(args, "--personal-egress-mfa-required", string(*c.PersonalEgressMFARequired))
 	}
 	if c.AlwaysActive != nil {

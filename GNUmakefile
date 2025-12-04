@@ -29,10 +29,9 @@ testacc:
 	TF_ACC=1 go test -v -cover -timeout 120m ./...
 
 ssh-keys:
-	mkdir -p ssh-keys
-	ssh-keygen -t ed25519 -f ssh-keys/id_ed25519 -N "" -C "bastion-test-key"
+	./scripts/create-ssh-keys.sh
 
 clean: testacc-down
 	@rm -rf ssh-keys/
 
-.PHONY: fmt lint test testacc build install generate
+.PHONY: fmt lint test testacc build install generate testacc
