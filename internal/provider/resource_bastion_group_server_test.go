@@ -1074,6 +1074,155 @@ func TestAccGroupServerResource_MultipleProtocols(t *testing.T) {
 	})
 }
 
+func TestAccGroupServerResource_PortForward(t *testing.T) {
+	err := testutils.CreateGroup("testgrpsrvpf", "bastionadmin", bastion.ED25519)
+	if err != nil {
+		t.Errorf("Unable to create test group: %s", err)
+	}
+
+	t.Cleanup(func() {
+		err := testutils.DeleteGroup("testgrpsrvpf")
+		if err != nil {
+			t.Errorf("Unable to delete test group: %s", err)
+		}
+	})
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// First create base access
+			{
+				Config: testAccGroupServerResourceConfig("testgrpsrvpf", "192.168.1.60", "22", "pfuser", "", "", "", ""),
+			},
+			// Then add portforward access
+			{
+				Config: testAccGroupServerResourceConfigWithPortForward("testgrpsrvpf", "192.168.1.60", "22", 8080),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("protocol"),
+						knownvalue.StringExact("portforward"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("remote_port"),
+						knownvalue.Int64Exact(8080),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("id"),
+						knownvalue.StringExact("testgrpsrvpf:192.168.1.60:22::portforward:8080"),
+					),
+				},
+			},
+			// ImportState testing with portforward
+			{
+				ResourceName:            "bastion_group_server.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateId:           "testgrpsrvpf:192.168.1.60:22::portforward:8080",
+				ImportStateVerifyIgnore: []string{"force"},
+			},
+		},
+	})
+}
+
+func TestAccGroupServerResource_PortForwardWithProxy(t *testing.T) {
+	err := testutils.CreateGroup("testgrpsrvpfprx", "bastionadmin", bastion.ED25519)
+	if err != nil {
+		t.Errorf("Unable to create test group: %s", err)
+	}
+
+	t.Cleanup(func() {
+		err := testutils.DeleteGroup("testgrpsrvpfprx")
+		if err != nil {
+			t.Errorf("Unable to delete test group: %s", err)
+		}
+	})
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// First create base access with proxy
+			{
+				Config: testAccGroupServerResourceConfig("testgrpsrvpfprx", "10.2.0.50", "22", "admin", "", "192.168.1.10", "22", "proxy_user"),
+			},
+			// Then add portforward access with proxy
+			{
+				Config: testAccGroupServerResourceConfigWithPortForwardAndProxy("testgrpsrvpfprx", "10.2.0.50", "22", 3306, "192.168.1.10", "22", "proxy_user"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("protocol"),
+						knownvalue.StringExact("portforward"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("remote_port"),
+						knownvalue.Int64Exact(3306),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("proxy_ip"),
+						knownvalue.StringExact("192.168.1.10"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_group_server.test",
+						tfjsonpath.New("id"),
+						knownvalue.StringExact("testgrpsrvpfprx:10.2.0.50:22::portforward:3306:192.168.1.10:22:proxy_user"),
+					),
+				},
+			},
+			// ImportState testing with portforward and proxy
+			{
+				ResourceName:            "bastion_group_server.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateId:           "testgrpsrvpfprx:10.2.0.50:22::portforward:3306:192.168.1.10:22:proxy_user",
+				ImportStateVerifyIgnore: []string{"force"},
+			},
+		},
+	})
+}
+
+func TestAccGroupServerResource_PortForwardMultiplePorts(t *testing.T) {
+	err := testutils.CreateGroup("testgrpsrvpfmulti", "bastionadmin", bastion.ED25519)
+	if err != nil {
+		t.Errorf("Unable to create test group: %s", err)
+	}
+
+	t.Cleanup(func() {
+		err := testutils.DeleteGroup("testgrpsrvpfmulti")
+		if err != nil {
+			t.Errorf("Unable to delete test group: %s", err)
+		}
+	})
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Create multiple portforward accesses for different ports
+			{
+				Config: testAccGroupServerResourceConfigMultiplePortForwards("testgrpsrvpfmulti"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("bastion_group_server.base", "group", "testgrpsrvpfmulti"),
+					resource.TestCheckResourceAttr("bastion_group_server.base", "ip", "192.168.1.110"),
+					resource.TestCheckResourceAttr("bastion_group_server.base", "user", "pfuser"),
+					resource.TestCheckResourceAttr("bastion_group_server.pf8080", "protocol", "portforward"),
+					resource.TestCheckResourceAttr("bastion_group_server.pf8080", "remote_port", "8080"),
+					resource.TestCheckResourceAttr("bastion_group_server.pf3306", "protocol", "portforward"),
+					resource.TestCheckResourceAttr("bastion_group_server.pf3306", "remote_port", "3306"),
+					resource.TestCheckResourceAttr("bastion_group_server.pf5432", "protocol", "portforward"),
+					resource.TestCheckResourceAttr("bastion_group_server.pf5432", "remote_port", "5432"),
+				),
+			},
+		},
+	})
+}
+
 // testAccGroupServerResourceConfigWithProtocol generates config with protocol.
 func testAccGroupServerResourceConfigWithProtocol(groupName, ip, port, protocol string) string { //nolint:unparam
 	config := providerConfig
@@ -1146,6 +1295,89 @@ resource "bastion_group_server" "rsync" {
   protocol = "rsync"
   force    = true
   depends_on = [bastion_group_server.base]
+}
+`, groupName)
+
+	return config
+}
+
+// testAccGroupServerResourceConfigWithPortForward generates config with portforward protocol and remote_port.
+func testAccGroupServerResourceConfigWithPortForward(groupName, ip, port string, remotePort int64) string {
+	config := providerConfig
+	config += fmt.Sprintf(`
+resource "bastion_group_server" "test" {
+  group       = %[1]q
+  ip          = %[2]q
+  port        = %[3]q
+  protocol    = "portforward"
+  remote_port = %[4]d
+  force       = true
+}
+`, groupName, ip, port, remotePort)
+
+	return config
+}
+
+// testAccGroupServerResourceConfigWithPortForwardAndProxy generates config with portforward, remote_port, and proxy.
+func testAccGroupServerResourceConfigWithPortForwardAndProxy(groupName, ip, port string, remotePort int64, proxyIP, proxyPort, proxyUser string) string {
+	config := providerConfig
+	config += fmt.Sprintf(`
+resource "bastion_group_server" "test" {
+  group       = %[1]q
+  ip          = %[2]q
+  port        = %[3]q
+  protocol    = "portforward"
+  remote_port = %[4]d
+  proxy_ip    = %[5]q
+  proxy_port  = %[6]q
+  proxy_user  = %[7]q
+  force       = true
+}
+`, groupName, ip, port, remotePort, proxyIP, proxyPort, proxyUser)
+
+	return config
+}
+
+// testAccGroupServerResourceConfigMultiplePortForwards generates config with multiple portforward accesses.
+func testAccGroupServerResourceConfigMultiplePortForwards(groupName string) string {
+	config := providerConfig
+	config += fmt.Sprintf(`
+resource "bastion_group_server" "base" {
+  group = %[1]q
+  ip    = "192.168.1.110"
+  port  = "22"
+  user  = "pfuser"
+  force = true
+}
+
+resource "bastion_group_server" "pf8080" {
+  group       = %[1]q
+  ip          = "192.168.1.110"
+  port        = "22"
+  protocol    = "portforward"
+  remote_port = 8080
+  force       = true
+  depends_on  = [bastion_group_server.base]
+}
+
+resource "bastion_group_server" "pf3306" {
+  group       = %[1]q
+  ip          = "192.168.1.110"
+  port        = "22"
+  protocol    = "portforward"
+  remote_port = 3306
+  force       = true
+  depends_on  = [bastion_group_server.base]
+}
+
+resource "bastion_group_server" "pf5432" {
+  group       = %[1]q
+  ip          = "192.168.1.110"
+  port        = "22"
+  protocol    = "portforward"
+  remote_port = 5432
+  force       = true
+  depends_on  = [bastion_group_server.base]
 }
 `, groupName)
 

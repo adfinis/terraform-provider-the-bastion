@@ -25,6 +25,7 @@ type GroupServer struct {
 	AddedBy       string  `json:"addedBy"`
 	AddedDate     string  `json:"addedDate"`
 	Expiry        *int    `json:"expiry"`
+	RemotePort    *Port   `json:"remotePort"`
 }
 
 // GroupListServers lists all accesses from a group.
@@ -56,6 +57,7 @@ type GroupAddServerOptions struct {
 	Comment       string
 	Protocol      string
 	ProxyOptions  *ProxyOptions
+	RemotePort    *int
 }
 
 // ProxyOptions respresents proxy options for adding an access.
@@ -118,6 +120,9 @@ func (g *GroupAddServerOptions) toArgs() []string {
 	if g.ProxyOptions != nil {
 		args = append(args, g.ProxyOptions.toArgs()...)
 	}
+	if g.RemotePort != nil {
+		args = append(args, "--remote-port", fmt.Sprintf("%d", *g.RemotePort))
+	}
 	return args
 }
 
@@ -151,7 +156,7 @@ func (c *Client) GroupAddServer(group, host, port, user string, options *GroupAd
 }
 
 // GroupDelServer removes a server access from a group.
-func (c *Client) GroupDelServer(group, host, port, user, protocol string, proxyOpts *ProxyOptions) error {
+func (c *Client) GroupDelServer(group, host, port, user, protocol string, proxyOpts *ProxyOptions, remotePort *int64) error {
 	args := []string{"--group", group, "--host", host, "--port", fmt.Sprintf("%q", port)}
 	if user != "" {
 		args = append(args, "--user", fmt.Sprintf("%q", user))
@@ -164,6 +169,9 @@ func (c *Client) GroupDelServer(group, host, port, user, protocol string, proxyO
 			return err
 		}
 		args = append(args, proxyOpts.toArgs()...)
+	}
+	if remotePort != nil && *remotePort != 0 {
+		args = append(args, "--remote-port", fmt.Sprintf("%d", *remotePort))
 	}
 	_, err := c.executeCommand("groupDelServer", args...)
 	return err

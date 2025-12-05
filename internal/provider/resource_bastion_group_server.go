@@ -51,6 +51,7 @@ type GroupServerResourceModel struct {
 	ForcePassword types.String `tfsdk:"force_password"`
 	TTL           types.Int64  `tfsdk:"ttl"`
 	Force         types.Bool   `tfsdk:"force"`
+	RemotePort    types.Int64  `tfsdk:"remote_port"`
 }
 
 // Metadata returns the resource type name.
@@ -61,7 +62,8 @@ func (r *GroupServerResource) Metadata(ctx context.Context, req resource.Metadat
 // Schema defines the schema for the resource.
 func (r *GroupServerResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Bastion group access",
+		MarkdownDescription: `Manages a Bastion group access.  
+Some features like proxyjump accesses and port forwardings are only support when running [The Bastion fork](https://github.com/adfinis-forks/the-bastion) from Adfinis.`,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "The resource identifier (group:ip:port:user[:proxy_ip:proxy_port:proxy_user])",
@@ -96,13 +98,13 @@ func (r *GroupServerResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"protocol": schema.StringAttribute{
-				MarkdownDescription: "Protocol to grant access for. Valid values are 'sftp', 'scpupload', 'scpdownload', 'rsync'. When set, 'user' must be empty. A base access must already exist for the server.",
+				MarkdownDescription: "Protocol to grant access for. Valid values are 'sftp', 'scpupload', 'scpdownload', 'rsync', 'portforward'. When set, 'user' must be empty. A base access must already exist for the server.",
 				Optional:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
 				Validators: []validator.String{
-					stringvalidator.OneOf("sftp", "scpupload", "scpdownload", "rsync"),
+					stringvalidator.OneOf("sftp", "scpupload", "scpdownload", "rsync", "portforward"),
 				},
 			},
 			"proxy_ip": schema.StringAttribute{
@@ -158,6 +160,13 @@ func (r *GroupServerResource) Schema(ctx context.Context, req resource.SchemaReq
 				MarkdownDescription: "Force adding the access even if it cannot be verified",
 				Optional:            true,
 				WriteOnly:           true,
+			},
+			"remote_port": schema.Int64Attribute{
+				MarkdownDescription: "Remote port forwarded from the target server to The Bastion",
+				Optional:            true,
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.RequiresReplace(),
+				},
 			},
 		},
 	}
@@ -239,6 +248,11 @@ func (r *GroupServerResource) Create(ctx context.Context, req resource.CreateReq
 		}
 	}
 
+	if !plan.RemotePort.IsNull() {
+		remotePort := int(plan.RemotePort.ValueInt64())
+		options.RemotePort = &remotePort
+	}
+
 	// Add the server access
 	server, err := r.client.GroupAddServer(
 		plan.Group.ValueString(),
@@ -290,6 +304,10 @@ func (r *GroupServerResource) Create(ctx context.Context, req resource.CreateReq
 		plan.ProxyUser = types.StringValue(*server.ProxyUser)
 	} else {
 		plan.ProxyUser = types.StringNull()
+	}
+
+	if server.RemotePort != nil {
+		plan.RemotePort = types.Int64Value(int64(server.RemotePort.ValueInt()))
 	}
 
 	if server.Comment != nil {
@@ -377,6 +395,12 @@ func (r *GroupServerResource) Read(ctx context.Context, req resource.ReadRequest
 		state.ProxyUser = types.StringNull()
 	}
 
+	if found.RemotePort != nil {
+		state.RemotePort = types.Int64Value(int64(found.RemotePort.ValueInt()))
+	} else {
+		state.RemotePort = types.Int64Null()
+	}
+
 	// for some reason comment becomes userComment
 	if found.UserComment != nil {
 		state.Comment = types.StringValue(*found.UserComment)
@@ -420,6 +444,7 @@ func (r *GroupServerResource) Delete(ctx context.Context, req resource.DeleteReq
 		state.User.ValueString(),
 		state.Protocol.ValueString(),
 		proxyOpts,
+		state.RemotePort.ValueInt64Pointer(),
 	)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -435,15 +460,17 @@ func (r *GroupServerResource) ImportState(ctx context.Context, req resource.Impo
 	// Expected formats:
 	// - group:ip:port:user
 	// - group:ip:port:user:protocol
+	// - group:ip:port:user:protocol:remote_port (when protocol is "portforward")
 	// - group:ip:port:user:proxy_ip:proxy_port:proxy_user
 	// - group:ip:port:user:protocol:proxy_ip:proxy_port:proxy_user
+	// - group:ip:port:user:protocol:remote_port:proxy_ip:proxy_port:proxy_user (when protocol is "portforward")
 	importID := req.ID
 	parts := parseImportID(importID)
 
-	if len(parts) < 4 || len(parts) == 6 || len(parts) > 8 {
+	if len(parts) < 4 || len(parts) == 7 || len(parts) > 9 {
 		resp.Diagnostics.AddError(
 			"Invalid Import ID",
-			fmt.Sprintf("Expected import ID in the format 'group:ip:port:user', 'group:ip:port:user:protocol', 'group:ip:port:user:proxy_ip:proxy_port:proxy_user', or 'group:ip:port:user:protocol:proxy_ip:proxy_port:proxy_user', got: %s", importID),
+			fmt.Sprintf("Expected import ID in the format 'group:ip:port:user', 'group:ip:port:user:protocol', 'group:ip:port:user:protocol:remote_port', 'group:ip:port:user:proxy_ip:proxy_port:proxy_user', 'group:ip:port:user:protocol:proxy_ip:proxy_port:proxy_user', or 'group:ip:port:user:protocol:remote_port:proxy_ip:proxy_port:proxy_user', got: %s", importID),
 		)
 		return
 	}
@@ -456,17 +483,67 @@ func (r *GroupServerResource) ImportState(ctx context.Context, req resource.Impo
 	if len(parts) == 5 {
 		// group:ip:port:user:protocol
 		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("protocol"), parts[4])...)
-	} else if len(parts) == 7 {
-		// group:ip:port:user:proxy_ip:proxy_port:proxy_user
-		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_ip"), parts[4])...)
-		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_port"), parts[5])...)
-		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_user"), parts[6])...)
+	} else if len(parts) == 6 {
+		// group:ip:port:user:protocol:remote_port (when protocol is "portforward")
+		protocol := parts[4]
+		if protocol != "portforward" {
+			resp.Diagnostics.AddError(
+				"Invalid Import ID",
+				fmt.Sprintf("When specifying remote_port, protocol must be 'portforward', got: %s", protocol),
+			)
+			return
+		}
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("protocol"), protocol)...)
+		remotePort, err := strconv.ParseInt(parts[5], 10, 64)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Invalid Import ID",
+				fmt.Sprintf("Invalid remote_port value '%s': %s", parts[5], err.Error()),
+			)
+			return
+		}
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("remote_port"), remotePort)...)
 	} else if len(parts) == 8 {
-		// group:ip:port:user:protocol:proxy_ip:proxy_port:proxy_user
-		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("protocol"), parts[4])...)
-		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_ip"), parts[5])...)
-		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_port"), parts[6])...)
-		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_user"), parts[7])...)
+		// Could be:
+		// - group:ip:port:user:proxy_ip:proxy_port:proxy_user (indices 4,5,6)
+		// - group:ip:port:user:protocol:proxy_ip:proxy_port:proxy_user (indices 4,5,6,7)
+		// Check if part[4] is a valid protocol
+		protocol := parts[4]
+		if protocol == "sftp" || protocol == "scpupload" || protocol == "scpdownload" || protocol == "rsync" || protocol == "portforward" {
+			// group:ip:port:user:protocol:proxy_ip:proxy_port:proxy_user
+			resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("protocol"), protocol)...)
+			resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_ip"), parts[5])...)
+			resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_port"), parts[6])...)
+			resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_user"), parts[7])...)
+		} else {
+			// group:ip:port:user:proxy_ip:proxy_port:proxy_user
+			resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_ip"), parts[4])...)
+			resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_port"), parts[5])...)
+			resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_user"), parts[6])...)
+		}
+	} else if len(parts) == 9 {
+		// group:ip:port:user:protocol:remote_port:proxy_ip:proxy_port:proxy_user
+		protocol := parts[4]
+		if protocol != "portforward" {
+			resp.Diagnostics.AddError(
+				"Invalid Import ID",
+				fmt.Sprintf("When specifying remote_port with proxy, protocol must be 'portforward', got: %s", protocol),
+			)
+			return
+		}
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("protocol"), protocol)...)
+		remotePort, err := strconv.ParseInt(parts[5], 10, 64)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Invalid Import ID",
+				fmt.Sprintf("Invalid remote_port value '%s': %s", parts[5], err.Error()),
+			)
+			return
+		}
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("remote_port"), remotePort)...)
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_ip"), parts[6])...)
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_port"), parts[7])...)
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("proxy_user"), parts[8])...)
 	}
 
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), importID)...)
@@ -491,6 +568,11 @@ func generateServerAccessID(model *GroupServerResourceModel) string {
 	// Add protocol if present
 	if !model.Protocol.IsNull() {
 		id = fmt.Sprintf("%s:%s", id, model.Protocol.ValueString())
+	}
+
+	// Add remote_port if present (only valid with portforward protocol)
+	if !model.RemotePort.IsNull() {
+		id = fmt.Sprintf("%s:%d", id, model.RemotePort.ValueInt64())
 	}
 
 	if !model.ProxyIP.IsNull() {
@@ -581,6 +663,20 @@ func matchesServerAccess(state *GroupServerResourceModel, server *bastion.GroupS
 		}
 	} else {
 		if stateUser != serverUser {
+			return false
+		}
+	}
+
+	// Check remote_port (for portforward protocol)
+	stateHasRemotePort := !state.RemotePort.IsNull()
+	serverHasRemotePort := server.RemotePort != nil
+
+	if stateHasRemotePort != serverHasRemotePort {
+		return false
+	}
+
+	if stateHasRemotePort {
+		if state.RemotePort.ValueInt64() != int64(server.RemotePort.ValueInt()) {
 			return false
 		}
 	}
