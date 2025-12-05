@@ -49,3 +49,12 @@ resource "bastion_group_server" "example_rsync" {
   protocol   = "rsync"
   depends_on = [bastion_group_server.example_base]
 }
+
+resource "bastion_group_server" "example_portforward" {
+  group       = "kryptonians"
+  ip          = "192.168.1.200"
+  port        = "22"
+  protocol    = "portforward"
+  remote_port = 8080
+  depends_on  = [bastion_group_server.example_base]
+}
