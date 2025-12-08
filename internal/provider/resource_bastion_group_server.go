@@ -66,7 +66,7 @@ func (r *GroupServerResource) Schema(ctx context.Context, req resource.SchemaReq
 Some features like proxyjump accesses and port forwardings are only support when running [The Bastion fork](https://github.com/adfinis-forks/the-bastion) from Adfinis.`,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				MarkdownDescription: "The resource identifier (group:ip:port:user[:proxy_ip:proxy_port:proxy_user])",
+				MarkdownDescription: "The resource identifier",
 				Computed:            true,
 			},
 			"group": schema.StringAttribute{
@@ -77,7 +77,7 @@ Some features like proxyjump accesses and port forwardings are only support when
 				},
 			},
 			"ip": schema.StringAttribute{
-				MarkdownDescription: "IP, subnet of the access target. (hostname does not work)",
+				MarkdownDescription: "IP or subnet of the access target. (hostname does not work)",
 				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -110,6 +110,10 @@ Some features like proxyjump accesses and port forwardings are only support when
 			"proxy_ip": schema.StringAttribute{
 				MarkdownDescription: "IP of the proxy server",
 				Optional:            true,
+				Validators: []validator.String{
+					stringvalidator.AlsoRequires(path.MatchRoot("proxy_port")),
+					stringvalidator.AlsoRequires(path.MatchRoot("proxy_user")),
+				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},

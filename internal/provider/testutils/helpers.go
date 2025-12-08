@@ -119,3 +119,27 @@ func GrantAccountCommand(account, command string) error {
 func RevokeAccountCommand(account, command string) error {
 	return TestBastionClient.AccountRevokeCommand(account, command)
 }
+
+func CreateGroupServerAccess(group, ip, port, user string) error {
+	_, err := TestBastionClient.GroupAddServer(group, ip, port, user, &bastion.GroupAddServerOptions{
+		Force: true,
+	})
+	return err
+}
+
+func CreateGroupServerAccessWithProtocol(group, ip, port, protocol string) error {
+	opts := &bastion.GroupAddServerOptions{
+		Protocol: protocol,
+		Force:    true,
+	}
+	_, err := TestBastionClient.GroupAddServer(group, ip, port, "", opts)
+	return err
+}
+
+func DeleteGroupServerAccess(group, ip, port, user string) error {
+	return TestBastionClient.GroupDelServer(group, ip, port, user, "", nil, nil)
+}
+
+func DeleteGroupServerAccessWithProtocol(group, ip, port, protocol string) error {
+	return TestBastionClient.GroupDelServer(group, ip, port, "", protocol, nil, nil)
+}

@@ -82,7 +82,7 @@ resource "bastion_group_server" "example_portforward" {
 ### Required
 
 - `group` (String) The Bastion group name to add the access to
-- `ip` (String) IP, subnet of the access target. (hostname does not work)
+- `ip` (String) IP or subnet of the access target. (hostname does not work)
 - `port` (String) Port of the access target, use '*' to allow ssh access to all ports
 
 ### Optional
@@ -103,7 +103,7 @@ resource "bastion_group_server" "example_portforward" {
 
 ### Read-Only
 
-- `id` (String) The resource identifier (group:ip:port:user[:proxy_ip:proxy_port:proxy_user])
+- `id` (String) The resource identifier
 
 ## Import
 

@@ -9,24 +9,7 @@ import (
 )
 
 // GroupServer represents a Bastion group server access.
-type GroupServer struct {
-	IP            string  `json:"ip"`
-	Port          *Port   `json:"port"`
-	User          *string `json:"user"`
-	ProxyIP       *string `json:"proxyIp"`
-	ProxyPort     *Port   `json:"proxyPort"`
-	ProxyUser     *string `json:"proxyUser"`
-	Comment       *string `json:"comment"`
-	UserComment   *string `json:"userComment"`
-	ForcePassword *string `json:"forcePassword"`
-	ForceKey      *string `json:"forceKey"`
-	Protocol      *string `json:"protocol"`
-	ReverseDNS    *string `json:"reverseDns"`
-	AddedBy       string  `json:"addedBy"`
-	AddedDate     string  `json:"addedDate"`
-	Expiry        *int    `json:"expiry"`
-	RemotePort    *Port   `json:"remotePort"`
-}
+type GroupServer ACL
 
 // GroupListServers lists all accesses from a group.
 func (c *Client) GroupListServers(name string) ([]*GroupServer, error) {

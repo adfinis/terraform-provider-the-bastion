@@ -215,6 +215,7 @@ func (p *BastionProvider) Resources(ctx context.Context) []func() resource.Resou
 		NewGroupACLKeeperResource,
 		NewGroupMemberResource,
 		NewGroupServerResource,
+		NewGroupGuestAccessResource,
 	}
 }
 
