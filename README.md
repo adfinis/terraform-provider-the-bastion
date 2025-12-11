@@ -5,6 +5,7 @@ This provider can be used to managed various resource on [The Bastion](https://g
 ## Requirements
 
 - [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.10
+- [OpenTofu](https://opentofu.org/docs/intro/install/) >= 1.11
 - [Go](https://golang.org/doc/install) >= 1.24
 
 ## Building The Provider
