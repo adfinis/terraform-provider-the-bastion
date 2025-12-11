@@ -48,7 +48,7 @@ archives:
   - id: default
     formats: ['zip']
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    wrap_in_directory: true
+    wrap_in_directory: false
     ids:
       - default
       - macOS
@@ -60,7 +60,7 @@ archives:
   - id: windows
     formats: ['zip']
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    wrap_in_directory: true
+    wrap_in_directory: false
     ids:
       - windows
     files:
