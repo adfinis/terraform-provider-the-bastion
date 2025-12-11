@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"os"
+	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -106,25 +107,34 @@ func (p *BastionProvider) Configure(ctx context.Context, req provider.ConfigureR
 	}
 
 	// Environment variable support
-	if data.Host.IsNull() {
-		host := os.Getenv("BASTION_HOST")
-		if host != "" {
-			data.Host = types.StringValue(host)
+	host := os.Getenv("BASTION_HOST")
+	if host != "" {
+		data.Host = types.StringValue(host)
+	}
+
+	port := os.Getenv("BASTION_PORT")
+	if port != "" {
+		portInt, err := strconv.ParseInt(port, 10, 64)
+		if err != nil {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("port"),
+				"Invalid Bastion Port",
+				"The BASTION_PORT environment variable must be a valid integer. "+
+					"Error: "+err.Error(),
+			)
+		} else {
+			data.Port = types.Int64Value(portInt)
 		}
 	}
 
-	if data.Username.IsNull() {
-		username := os.Getenv("BASTION_USERNAME")
-		if username != "" {
-			data.Username = types.StringValue(username)
-		}
+	username := os.Getenv("BASTION_USERNAME")
+	if username != "" {
+		data.Username = types.StringValue(username)
 	}
 
-	if data.PrivateKeyFile.IsNull() {
-		keyFile := os.Getenv("BASTION_PRIVATE_KEY_FILE")
-		if keyFile != "" {
-			data.PrivateKeyFile = types.StringValue(keyFile)
-		}
+	keyFile := os.Getenv("BASTION_PRIVATE_KEY_FILE")
+	if keyFile != "" {
+		data.PrivateKeyFile = types.StringValue(keyFile)
 	}
 
 	// Validation
