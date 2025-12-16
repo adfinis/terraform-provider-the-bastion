@@ -6,6 +6,7 @@ package bastion
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 type GroupGuestAccess ACL
@@ -119,5 +120,9 @@ func (c *Client) GroupDelGuestAccess(group, account, host, port, user, protocol 
 	if err != nil {
 		return err
 	}
+
+	// Ugly workaround because the bastion seems to fail if we call GroupDelGuestAccess too frequently
+	time.Sleep(100 * time.Millisecond)
+
 	return nil
 }
