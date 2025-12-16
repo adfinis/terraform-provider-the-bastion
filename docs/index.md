@@ -33,6 +33,7 @@ provider "bastion" {
 - `port` (Number) The SSH port to connect to (default: 22)
 - `private_key` (String, Sensitive) SSH private key content
 - `private_key_file` (String) Path to SSH private key file
+- `private_key_passphrase` (String, Sensitive) Passphrase for the SSH private key
 - `strict_host_key_checking` (Boolean) Enable strict host key checking (default: true)
 - `timeout` (Number) SSH connection timeout in seconds (default: 30)
 - `use_agent` (Boolean) Use SSH agent for authentication (default: false)
