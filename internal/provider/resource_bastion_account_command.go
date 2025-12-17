@@ -129,9 +129,17 @@ func (r *AccountCommandResource) Read(ctx context.Context, req resource.ReadRequ
 		return
 	}
 
-	if !slices.Contains(account.AllowedCommands, state.Command.ValueString()) {
-		resp.State.RemoveResource(ctx)
-		return
+	// auditor is special
+	if state.Command.ValueString() == "auditor" {
+		if !account.IsAuditor.Bool() {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+	} else {
+		if !slices.Contains(account.AllowedCommands, state.Command.ValueString()) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)

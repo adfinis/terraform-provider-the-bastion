@@ -163,3 +163,52 @@ resource "bastion_account_command" "test2" {
 
 	return config
 }
+
+func TestAccAccountCommandResource_Auditor(t *testing.T) {
+	err := testutils.CreateAccount("testcmduser4")
+	if err != nil {
+		t.Errorf("Unable to create test account: %s", err)
+	}
+
+	t.Cleanup(func() {
+		err := testutils.DeleteAccount("testcmduser4")
+		if err != nil {
+			t.Errorf("Unable to delete test account: %s", err)
+		}
+	})
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Create and Read testing for auditor command
+			{
+				Config: testAccAccountCommandResourceConfig("testcmduser4", "auditor"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"bastion_account_command.test",
+						tfjsonpath.New("account"),
+						knownvalue.StringExact("testcmduser4"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_account_command.test",
+						tfjsonpath.New("command"),
+						knownvalue.StringExact("auditor"),
+					),
+					statecheck.ExpectKnownValue(
+						"bastion_account_command.test",
+						tfjsonpath.New("id"),
+						knownvalue.StringExact("testcmduser4:auditor"),
+					),
+				},
+			},
+			// ImportState testing for auditor command
+			{
+				ResourceName:      "bastion_account_command.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateId:     "testcmduser4:auditor",
+			},
+		},
+	})
+}
