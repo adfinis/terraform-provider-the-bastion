@@ -37,6 +37,7 @@ type BastionProviderModel struct {
 	Username              types.String `tfsdk:"username"`
 	PrivateKey            types.String `tfsdk:"private_key"`
 	PrivateKeyFile        types.String `tfsdk:"private_key_file"`
+	PrivateKeyPassphrase  types.String `tfsdk:"private_key_passphrase"`
 	UseAgent              types.Bool   `tfsdk:"use_agent"`
 	Timeout               types.Int64  `tfsdk:"timeout"`
 	StrictHostKeyChecking types.Bool   `tfsdk:"strict_host_key_checking"`
@@ -70,6 +71,11 @@ func (p *BastionProvider) Schema(ctx context.Context, req provider.SchemaRequest
 			"private_key_file": schema.StringAttribute{
 				MarkdownDescription: "Path to SSH private key file",
 				Optional:            true,
+			},
+			"private_key_passphrase": schema.StringAttribute{
+				MarkdownDescription: "Passphrase for the SSH private key",
+				Optional:            true,
+				Sensitive:           true,
 			},
 			"use_agent": schema.BoolAttribute{
 				MarkdownDescription: "Use SSH agent for authentication (default: false)",
@@ -137,6 +143,11 @@ func (p *BastionProvider) Configure(ctx context.Context, req provider.ConfigureR
 		data.PrivateKeyFile = types.StringValue(keyFile)
 	}
 
+	keyPassphrase := os.Getenv("BASTION_PRIVATE_KEY_PASSPHRASE")
+	if keyPassphrase != "" {
+		data.PrivateKeyPassphrase = types.StringValue(keyPassphrase)
+	}
+
 	// Validation
 	if data.Host.IsNull() {
 		resp.Diagnostics.AddAttributeError(
@@ -165,18 +176,37 @@ func (p *BastionProvider) Configure(ctx context.Context, req provider.ConfigureR
 	}
 
 	authMethods := make([]bastion.SSHAuthMethod, 0)
+	var passphrase string
+	if !data.PrivateKeyPassphrase.IsNull() {
+		passphrase = data.PrivateKeyPassphrase.ValueString()
+	}
+
 	if !data.PrivateKey.IsNull() {
-		authMethods = append(
-			authMethods,
-			bastion.WithPrivateKeyAuth(data.PrivateKey.ValueString()),
-		)
+		if passphrase != "" {
+			authMethods = append(
+				authMethods,
+				bastion.WithPrivateKeyAuthWithPassphrase(data.PrivateKey.ValueString(), passphrase),
+			)
+		} else {
+			authMethods = append(
+				authMethods,
+				bastion.WithPrivateKeyAuth(data.PrivateKey.ValueString()),
+			)
+		}
 	}
 
 	if !data.PrivateKeyFile.IsNull() {
-		authMethods = append(
-			authMethods,
-			bastion.WithPrivateKeyFileAuth(data.PrivateKeyFile.ValueString()),
-		)
+		if passphrase != "" {
+			authMethods = append(
+				authMethods,
+				bastion.WithPrivateKeyFileAuthWithPassphrase(data.PrivateKeyFile.ValueString(), passphrase),
+			)
+		} else {
+			authMethods = append(
+				authMethods,
+				bastion.WithPrivateKeyFileAuth(data.PrivateKeyFile.ValueString()),
+			)
+		}
 	}
 
 	if data.UseAgent.ValueBool() {
