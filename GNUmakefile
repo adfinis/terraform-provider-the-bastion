@@ -36,7 +36,7 @@ clean: testacc-down
 
 local-install:
 	go install -v ./...
-	mkdir -p ~/.terraform.d/plugins/registry.terraform.io/adfinis/bastion/0.0.1/linux_amd64
-	mv ~/go/bin/terraform-provider-bastion ~/.terraform.d/plugins/registry.terraform.io/adfinis/bastion/0.0.1/linux_amd64
+	mkdir -p ~/.terraform.d/plugins/registry.opentofu.org/adfinis/bastion/1.0.0/linux_amd64
+	mv ~/go/bin/terraform-provider-bastion ~/.terraform.d/plugins/registry.opentofu.org/adfinis/bastion/1.0.0/linux_amd64
 
 .PHONY: fmt lint test testacc build install generate testacc

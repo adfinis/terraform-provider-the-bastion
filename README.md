@@ -20,7 +20,7 @@ go install
 
 ## Using the provider
 
-The provider documentation can be found [here](https://registry.terraform.io/providers/adfinis/bastion).
+The provider documentation can be found [here](https://search.opentofu.org/provider/adfinis/bastion/latest).
 
 ## Developing the Provider
 
